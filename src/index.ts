@@ -59,6 +59,8 @@ export function moveDefsToRoot<T extends TAnything>(
 ): TAnyObject {
     const result: T = {
         ...schema,
+        // $id seems to break OpenAI API, so make sure it is always undefined at all levels
+        $id: undefined,
     }
 
     if (IsAnyOf(result)) {

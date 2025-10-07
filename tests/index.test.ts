@@ -39,7 +39,6 @@ describe("index tests", () => {
             schema: {
                 $defs: {
                     CyclicType: {
-                        $id: "CyclicType",
                         type: "object",
                         properties: {
                             id: { type: ["string", "null"], format: "uuid" },
