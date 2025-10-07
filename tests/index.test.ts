@@ -6,6 +6,7 @@ const CyclicType = Type.Cyclic(
     {
         CyclicType: Type.Object(
             {
+                id: Type.Union([Type.String({ format: "uuid" }), Type.Null()]),
                 name: Type.String(),
                 children: Type.Array(Type.Ref("CyclicType"), {
                     description: "A list of child cyclic types",
@@ -41,6 +42,7 @@ describe("index tests", () => {
                         $id: "CyclicType",
                         type: "object",
                         properties: {
+                            id: { type: ["string", "null"], format: "uuid" },
                             name: { type: "string" },
                             children: {
                                 type: "array",
@@ -49,7 +51,7 @@ describe("index tests", () => {
                             },
                             dates: { type: "array", items: { type: "string" } },
                         },
-                        required: ["name", "children", "dates"],
+                        required: ["id", "name", "children", "dates"],
                         additionalProperties: false,
                     },
                 },
