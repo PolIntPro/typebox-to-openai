@@ -53,7 +53,7 @@ function IsRef(schema: TSchema): schema is TRef {
  * @returns A copy of the schema object that was passed with any refs changed to reference
  * the new location of where refs are defined and with all $defs removed
  */
-export function moveDefsToRoot<T extends TAnything>(
+function moveDefsToRoot<T extends TAnything>(
     schema: T,
     allDefs: Record<string, TAnyObject>
 ): TAnyObject {

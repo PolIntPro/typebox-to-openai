@@ -1,6 +1,6 @@
 {
     "name": "typebox-to-openai",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Convert Typebox schema to OpenAI API schema for structured output",
     "main": "index.ts",
     "scripts": {
