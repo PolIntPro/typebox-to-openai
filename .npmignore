@@ -1,0 +1,7 @@
+# Exclude test files and unnecessary directories
+tests/
+scripts/
+.vscode/
+pnpm-lock.yaml
+.gitignore
+.prettierrc.json

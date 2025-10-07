@@ -1,7 +1,7 @@
 import { stdin, stdout } from "node:process"
 import fs from "node:fs"
 import { program } from "commander"
-import { ConvertToOpenAISchema } from "src"
+import { ConvertToOpenAISchema } from "../"
 
 program.option("-n, --name <string>", "Name of the prompt")
 program.parse()
