@@ -1,0 +1,24 @@
+{
+    "name": "typebox-to-openai",
+    "version": "1.0.0",
+    "description": "Convert Typebox schema to OpenAI API schema for structured output",
+    "main": "index.ts",
+    "scripts": {
+        "test": "vitest run",
+        "prettify": "pnpx prettier -w ."
+    },
+    "type": "module",
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "packageManager": "pnpm@10.14.0",
+    "devDependencies": {
+        "@types/node": "^24.3.0",
+        "prettier": "^3.6.2",
+        "vitest": "^3.2.4"
+    },
+    "dependencies": {
+        "commander": "^14.0.0",
+        "typebox": "^1.0.28"
+    }
+}

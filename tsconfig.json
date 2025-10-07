@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "jsx": "preserve",
+        "incremental": true,
+        "baseUrl": "./",
+        "verbatimModuleSyntax": true,
+        "types": ["vitest/globals"]
+    },
+    "include": ["**/*.ts", "tests/*.ts"],
+    "exclude": ["node_modules"]
+}
