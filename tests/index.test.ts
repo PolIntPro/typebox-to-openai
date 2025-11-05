@@ -31,7 +31,39 @@ const RootType = Type.Object(
     }
 )
 
+const SimpleSchema = Type.Object(
+    {
+        title: Type.String(),
+        count: Type.Number(),
+        isActive: Type.Boolean(),
+    },
+    {
+        additionalProperties: false,
+    }
+)
+
 describe("index tests", () => {
+    test("Convert simple schema", () => {
+        const expectedResult = {
+            name: "SimpleSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    title: { type: "string" },
+                    count: { type: "number" },
+                    isActive: { type: "boolean" },
+                },
+                required: ["title", "count", "isActive"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(ConvertToOpenAISchema(SimpleSchema, "SimpleSchema")).toEqual(
+            expectedResult
+        )
+    })
+
     test("Verify schema transformation", () => {
         const expectedResult = {
             name: "SchemaName",

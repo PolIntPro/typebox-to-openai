@@ -43,7 +43,7 @@
     },
     "dependencies": {
         "commander": "^14.0.0",
-        "typebox": "^1.0.28"
+        "typebox": "^1.0.50"
     },
     "packageManager": "pnpm@10.14.0"
 }

@@ -177,9 +177,13 @@ export function ConvertToOpenAISchema(
         schema: {
             ...PromptSchema.schema,
             ...finalSchema,
-            $defs: {
-                ...rootDefs,
-            },
+            ...(Object.keys(rootDefs).length > 0
+                ? {
+                      $defs: {
+                          ...rootDefs,
+                      },
+                  }
+                : {}),
         } as TObjectWithDefs,
     }
 }
