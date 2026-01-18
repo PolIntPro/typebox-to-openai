@@ -12,6 +12,20 @@ const CyclicType = Type.Cyclic(
                     description: "A list of child cyclic types",
                 }),
                 dates: Type.Array(Type.String()),
+                someUnion: Type.Union([
+                    Type.Object(
+                        {
+                            propA: Type.String(),
+                        },
+                        { additionalProperties: false }
+                    ),
+                    Type.Object(
+                        {
+                            propB: Type.Number(),
+                        },
+                        { additionalProperties: false }
+                    ),
+                ]),
             },
             {
                 additionalProperties: false,
@@ -81,8 +95,34 @@ describe("index tests", () => {
                                 description: "A list of child cyclic types",
                             },
                             dates: { type: "array", items: { type: "string" } },
+                            someUnion: {
+                                anyOf: [
+                                    {
+                                        type: "object",
+                                        properties: {
+                                            propA: { type: "string" },
+                                        },
+                                        required: ["propA"],
+                                        additionalProperties: false,
+                                    },
+                                    {
+                                        type: "object",
+                                        properties: {
+                                            propB: { type: "number" },
+                                        },
+                                        required: ["propB"],
+                                        additionalProperties: false,
+                                    },
+                                ],
+                            },
                         },
-                        required: ["id", "name", "children", "dates"],
+                        required: [
+                            "id",
+                            "name",
+                            "children",
+                            "dates",
+                            "someUnion",
+                        ],
                         additionalProperties: false,
                     },
                 },

@@ -1,6 +1,6 @@
 {
     "name": "typebox-to-openai",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Convert Typebox schema to OpenAI API schema for structured output",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -36,14 +36,14 @@
         "url": "https://github.com/PolIntPro/typebox-to-openai/issues"
     },
     "devDependencies": {
-        "@types/node": "^24.3.0",
-        "prettier": "^3.6.2",
+        "@types/node": "^24.10.9",
+        "prettier": "^3.8.0",
         "typescript": "^5.9.3",
         "vitest": "^3.2.4"
     },
     "dependencies": {
-        "commander": "^14.0.0",
-        "typebox": "^1.0.50"
+        "commander": "^14.0.2",
+        "typebox": "^1.0.78"
     },
     "packageManager": "pnpm@10.14.0"
 }

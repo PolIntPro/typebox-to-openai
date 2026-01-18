@@ -1,4 +1,4 @@
-import type { TSchema, TArray, TObject, TRef, TNull } from "typebox"
+import type { TArray, TNull, TObject, TRef, TSchema } from "typebox/type"
 
 type TObjectWithDefs = TRef & {
     $defs: Record<string, TObject>
@@ -77,30 +77,47 @@ function moveDefsToRoot<T extends TAnything>(
             JSON.stringify(result, null, 4)
         )
         // Should be the object definition and null, in which case we'll mutate the object and recurse
-        const anyOfVals = result["anyOf"]
-        let actualObject: Record<string, any> | null = null
+        const anyOfVals = [...result["anyOf"]]
+        let actualObjects: Record<string, any>[] = []
         let foundNull = false
 
         for (const val of anyOfVals) {
             if ("type" in val && val["type"] !== "null") {
-                actualObject = val
+                actualObjects.push(val)
             } else {
                 foundNull = true
             }
         }
 
-        if (foundNull && actualObject !== null && anyOfVals.length === 2) {
-            actualObject["type"] = [actualObject["type"], "null"]
-        } else {
+        if (foundNull && actualObjects.length > 0 && anyOfVals.length === 2) {
+            actualObjects[0]["type"] = [actualObjects[0]["type"], "null"]
+            // Recurse on the extracted type
+            console.log(
+                "Processing anyOf with null type, merging types into single object",
+                result,
+                anyOfVals
+            )
+            return moveDefsToRoot(actualObjects[0] as TAnyObject, allDefs)
+        } else if (foundNull) {
             console.error(
                 "Did not find expected values in anyOf",
                 JSON.stringify(anyOfVals, null, 4)
             )
             throw new Error("Did not find expected values in anyOf")
-        }
+        } else {
+            console.log(
+                "Processing anyOf without null type, type is a union of real types",
+                result,
+                anyOfVals
+            )
+            result["anyOf"] = []
+            for (const val of anyOfVals) {
+                const moved = moveDefsToRoot(val as TAnyObject, allDefs)
+                result["anyOf"].push(moved)
+            }
 
-        // Recurse on the extracted type
-        return moveDefsToRoot(actualObject as TAnyObject, allDefs)
+            return result as unknown as TAnyObject
+        }
     }
 
     if (IsDefsObject(result)) {
