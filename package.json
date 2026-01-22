@@ -50,5 +50,5 @@
         "commander": "^14.0.2",
         "typebox": "^1.0.79"
     },
-    "packageManager": "pnpm@10.14.0"
+    "packageManager": "pnpm@10.23.0"
 }

@@ -8,6 +8,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? ""
 const OPENAI_BASE_URL =
     process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.2"
+const OPENAI_TIMEOUT_MS = 15000
 
 const shouldRun = Boolean(OPENAI_API_KEY)
 const describeIfConfigured = shouldRun ? describe : describe.skip
@@ -68,64 +69,75 @@ async function requestStructuredOutput(
 }
 
 describeIfConfigured("OpenAI integration (optional)", () => {
-    test("accepts a simple TypeBox schema as response_format", async () => {
-        const SimpleSchema = Type.Object(
-            {
-                title: Type.String(),
-                count: Type.Number(),
-                isActive: Type.Boolean(),
-            },
-            { additionalProperties: false }
-        )
-
-        const promptSchema = ConvertToOpenAISchema(SimpleSchema, "SimpleSchema")
-        const response = await requestStructuredOutput(
-            promptSchema.name,
-            promptSchema.schema as Record<string, unknown>
-        )
-        const text = extractOutputText(response)
-        const parsed = JSON.parse(text) as {
-            title?: string
-            count?: number
-            isActive?: boolean
-        }
-
-        expect(parsed.title).toBeTypeOf("string")
-        expect(parsed.count).toBeTypeOf("number")
-        expect(parsed.isActive).toBeTypeOf("boolean")
-    })
-
-    test("accepts schemas that include $defs and $ref", async () => {
-        const schemaWithDefs = {
-            type: "object",
-            properties: {
-                child: { $ref: "#/$defs/Child" },
-            },
-            required: ["child"],
-            additionalProperties: false,
-            $defs: {
-                Child: {
-                    type: "object",
-                    properties: {
-                        id: { type: "string" },
-                    },
-                    required: ["id"],
-                    additionalProperties: false,
+    test(
+        "accepts a simple TypeBox schema as response_format",
+        async () => {
+            const SimpleSchema = Type.Object(
+                {
+                    title: Type.String(),
+                    count: Type.Number(),
+                    isActive: Type.Boolean(),
                 },
-            },
-        }
+                { additionalProperties: false }
+            )
 
-        const promptSchema = ConvertToOpenAISchema(
-            schemaWithDefs,
-            "SchemaWithDefs"
-        )
-        const response = await requestStructuredOutput(
-            promptSchema.name,
-            promptSchema.schema as Record<string, unknown>
-        )
-        const text = extractOutputText(response)
-        const parsed = JSON.parse(text) as { child?: { id?: string } }
+            const promptSchema = ConvertToOpenAISchema(
+                SimpleSchema,
+                "SimpleSchema"
+            )
+            const response = await requestStructuredOutput(
+                promptSchema.name,
+                promptSchema.schema as Record<string, unknown>
+            )
+            const text = extractOutputText(response)
+            const parsed = JSON.parse(text) as {
+                title?: string
+                count?: number
+                isActive?: boolean
+            }
 
-        expect(parsed.child?.id).toBeTypeOf("string")
-    })
+            expect(parsed.title).toBeTypeOf("string")
+            expect(parsed.count).toBeTypeOf("number")
+            expect(parsed.isActive).toBeTypeOf("boolean")
+        },
+        OPENAI_TIMEOUT_MS
+    )
+
+    test(
+        "accepts schemas that include $defs and $ref",
+        async () => {
+            const schemaWithDefs = {
+                type: "object",
+                properties: {
+                    child: { $ref: "#/$defs/Child" },
+                },
+                required: ["child"],
+                additionalProperties: false,
+                $defs: {
+                    Child: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                        },
+                        required: ["id"],
+                        additionalProperties: false,
+                    },
+                },
+            }
+
+            const promptSchema = ConvertToOpenAISchema(
+                schemaWithDefs,
+                "SchemaWithDefs"
+            )
+            const response = await requestStructuredOutput(
+                promptSchema.name,
+                promptSchema.schema as Record<string, unknown>
+            )
+            const text = extractOutputText(response)
+            const parsed = JSON.parse(text) as { child?: { id?: string } }
+
+            expect(parsed.child?.id).toBeTypeOf("string")
+        },
+        OPENAI_TIMEOUT_MS
+    )
 })
