@@ -244,7 +244,202 @@ describe("index tests", () => {
         }
 
         expect(() => ConvertToOpenAISchema(badSchema, "BadSchema")).toThrow(
-            "Did not find expected values in anyOf"
+            "Unsupported anyOf union with only null branches at #"
         )
+    })
+
+    test("Preserves anyOf with multiple object branches and null", () => {
+        const multiObjectSchema = Type.Object(
+            {
+                value: Type.Union([
+                    Type.Object(
+                        { a: Type.String() },
+                        { additionalProperties: false }
+                    ),
+                    Type.Object(
+                        { b: Type.Number() },
+                        { additionalProperties: false }
+                    ),
+                    Type.Null(),
+                ]),
+            },
+            { additionalProperties: false }
+        )
+
+        const expectedResult = {
+            name: "MultiObjectSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    value: {
+                        anyOf: [
+                            {
+                                type: "object",
+                                properties: { a: { type: "string" } },
+                                required: ["a"],
+                                additionalProperties: false,
+                            },
+                            {
+                                type: "object",
+                                properties: { b: { type: "number" } },
+                                required: ["b"],
+                                additionalProperties: false,
+                            },
+                            { type: "null" },
+                        ],
+                    },
+                },
+                required: ["value"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(
+            ConvertToOpenAISchema(multiObjectSchema, "MultiObjectSchema")
+        ).toEqual(expectedResult)
+    })
+
+    test("Preserves anyOf with non-object types and null", () => {
+        const schema = Type.Object(
+            {
+                value: Type.Union([Type.String(), Type.Null()]),
+            },
+            { additionalProperties: false }
+        )
+
+        const expectedResult = {
+            name: "StringOrNullSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    value: {
+                        anyOf: [{ type: "string" }, { type: "null" }],
+                    },
+                },
+                required: ["value"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(ConvertToOpenAISchema(schema, "StringOrNullSchema")).toEqual(
+            expectedResult
+        )
+    })
+
+    test("Collects root $defs without $ref", () => {
+        const schemaWithDefs = {
+            type: "object",
+            properties: {
+                child: { $ref: "#/$defs/Child" },
+            },
+            required: ["child"],
+            additionalProperties: false,
+            $defs: {
+                Child: {
+                    type: "object",
+                    properties: {
+                        id: { type: "string" },
+                    },
+                    required: ["id"],
+                    additionalProperties: false,
+                },
+            },
+        }
+
+        const expectedResult = {
+            name: "RootDefsSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    child: { $ref: "#/$defs/Child" },
+                },
+                required: ["child"],
+                additionalProperties: false,
+                $defs: {
+                    Child: {
+                        type: "object",
+                        properties: {
+                            id: { type: "string" },
+                        },
+                        required: ["id"],
+                        additionalProperties: false,
+                    },
+                },
+            },
+        }
+
+        expect(
+            ConvertToOpenAISchema(schemaWithDefs, "RootDefsSchema")
+        ).toEqual(expectedResult)
+    })
+
+    test("Processes tuple items in arrays", () => {
+        const tupleSchema = {
+            type: "array",
+            items: [{ $ref: "Child" }, { type: "string" }],
+        }
+
+        const expectedResult = {
+            name: "TupleSchema",
+            strict: true,
+            schema: {
+                type: "array",
+                items: [{ $ref: "#/$defs/Child" }, { type: "string" }],
+            },
+        }
+
+        expect(ConvertToOpenAISchema(tupleSchema, "TupleSchema")).toEqual(
+            expectedResult
+        )
+    })
+
+    test("Preserves external and JSON pointer refs", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                external: { $ref: "https://example.com/schema.json" },
+                internal: { $ref: "#/components/schemas/Thing" },
+            },
+            required: ["external", "internal"],
+            additionalProperties: false,
+        }
+
+        const expectedResult = {
+            name: "ExternalRefSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    external: { $ref: "https://example.com/schema.json" },
+                    internal: { $ref: "#/components/schemas/Thing" },
+                },
+                required: ["external", "internal"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(ConvertToOpenAISchema(schema, "ExternalRefSchema")).toEqual(
+            expectedResult
+        )
+    })
+
+    test("Does not mutate input schema", () => {
+        const inputSchema = {
+            type: "object",
+            properties: {
+                child: { $ref: "Child" },
+            },
+            required: ["child"],
+            additionalProperties: false,
+        }
+
+        const originalSnapshot = JSON.parse(JSON.stringify(inputSchema))
+
+        ConvertToOpenAISchema(inputSchema, "MutationCheckSchema")
+
+        expect(inputSchema).toEqual(originalSnapshot)
     })
 })
