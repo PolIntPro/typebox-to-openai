@@ -5,7 +5,8 @@ import { ConvertToOpenAISchema } from "../"
 
 // Required env vars: OPENAI_API_KEY (required), OPENAI_BASE_URL (optional), OPENAI_MODEL (optional)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? ""
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"
+const OPENAI_BASE_URL =
+    process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1"
 const OPENAI_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.2"
 
 const shouldRun = Boolean(OPENAI_API_KEY)
@@ -29,7 +30,10 @@ function extractOutputText(response: OpenAIResponse): string {
     const output = response.output ?? []
     for (const item of output) {
         for (const content of item.content ?? []) {
-            if (content.type === "output_text" && typeof content.text === "string") {
+            if (
+                content.type === "output_text" &&
+                typeof content.text === "string"
+            ) {
                 return content.text
             }
         }
@@ -38,7 +42,10 @@ function extractOutputText(response: OpenAIResponse): string {
     return ""
 }
 
-async function requestStructuredOutput(schemaName: string, schema: unknown) {
+async function requestStructuredOutput(
+    schemaName: string,
+    schema: Record<string, unknown>
+) {
     const client = new OpenAI({
         apiKey: OPENAI_API_KEY,
         baseURL: OPENAI_BASE_URL,
@@ -47,9 +54,9 @@ async function requestStructuredOutput(schemaName: string, schema: unknown) {
     const response = await client.responses.create({
         model: OPENAI_MODEL,
         input: "Return a JSON object that matches the provided schema.",
-        response_format: {
-            type: "json_schema",
-            json_schema: {
+        text: {
+            format: {
+                type: "json_schema",
                 name: schemaName,
                 strict: true,
                 schema,
@@ -74,7 +81,7 @@ describeIfConfigured("OpenAI integration (optional)", () => {
         const promptSchema = ConvertToOpenAISchema(SimpleSchema, "SimpleSchema")
         const response = await requestStructuredOutput(
             promptSchema.name,
-            promptSchema.schema
+            promptSchema.schema as Record<string, unknown>
         )
         const text = extractOutputText(response)
         const parsed = JSON.parse(text) as {
@@ -114,7 +121,7 @@ describeIfConfigured("OpenAI integration (optional)", () => {
         )
         const response = await requestStructuredOutput(
             promptSchema.name,
-            promptSchema.schema
+            promptSchema.schema as Record<string, unknown>
         )
         const text = extractOutputText(response)
         const parsed = JSON.parse(text) as { child?: { id?: string } }
