@@ -56,6 +56,28 @@ const SimpleSchema = Type.Object(
     }
 )
 
+const NullableObjectSchema = Type.Object(
+    {
+        maybe: Type.Union([
+            Type.Object(
+                {
+                    id: Type.Number(),
+                },
+                { additionalProperties: false }
+            ),
+            Type.Null(),
+        ]),
+    },
+    { additionalProperties: false }
+)
+
+const AnyOfNoNullSchema = Type.Object(
+    {
+        value: Type.Union([Type.String(), Type.Number()]),
+    },
+    { additionalProperties: false }
+)
+
 describe("index tests", () => {
     test("Convert simple schema", () => {
         const expectedResult = {
@@ -138,6 +160,91 @@ describe("index tests", () => {
 
         expect(ConvertToOpenAISchema(RootType, "SchemaName")).toEqual(
             expectedResult
+        )
+    })
+
+    test("Merge anyOf with null into a nullable object type", () => {
+        const expectedResult = {
+            name: "NullableObjectSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    maybe: {
+                        type: ["object", "null"],
+                        properties: {
+                            id: { type: "number" },
+                        },
+                        required: ["id"],
+                        additionalProperties: false,
+                    },
+                },
+                required: ["maybe"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(
+            ConvertToOpenAISchema(NullableObjectSchema, "NullableObjectSchema")
+        ).toEqual(expectedResult)
+    })
+
+    test("Preserve anyOf unions that do not include null", () => {
+        const expectedResult = {
+            name: "AnyOfNoNullSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    value: {
+                        anyOf: [{ type: "string" }, { type: "number" }],
+                    },
+                },
+                required: ["value"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(
+            ConvertToOpenAISchema(AnyOfNoNullSchema, "AnyOfNoNullSchema")
+        ).toEqual(expectedResult)
+    })
+
+    test("Rewrites non-root $ref paths in nested objects", () => {
+        const inputSchema = {
+            type: "object",
+            properties: {
+                child: { $ref: "Child" },
+            },
+            required: ["child"],
+            additionalProperties: false,
+        }
+
+        const expectedResult = {
+            name: "RefRewriteSchema",
+            strict: true,
+            schema: {
+                type: "object",
+                properties: {
+                    child: { $ref: "#/$defs/Child" },
+                },
+                required: ["child"],
+                additionalProperties: false,
+            },
+        }
+
+        expect(ConvertToOpenAISchema(inputSchema, "RefRewriteSchema")).toEqual(
+            expectedResult
+        )
+    })
+
+    test("Throws when anyOf contains null but no object types", () => {
+        const badSchema = {
+            anyOf: [{ type: "null" }, { type: "null" }],
+        }
+
+        expect(() => ConvertToOpenAISchema(badSchema, "BadSchema")).toThrow(
+            "Did not find expected values in anyOf"
         )
     })
 })
