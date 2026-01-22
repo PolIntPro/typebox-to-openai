@@ -109,7 +109,12 @@ describe("index tests", () => {
                     CyclicType: {
                         type: "object",
                         properties: {
-                            id: { type: ["string", "null"], format: "uuid" },
+                            id: {
+                                anyOf: [
+                                    { type: "string", format: "uuid" },
+                                    { type: "null" },
+                                ],
+                            },
                             name: { type: "string" },
                             children: {
                                 type: "array",

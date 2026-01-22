@@ -96,8 +96,7 @@ function removeDefs(schema) {
         return { schema }
     }
     const defs = schema.$defs
-    const schemaWithoutDefs = { ...schema }
-    delete schemaWithoutDefs.$defs
+    const { $defs: _removed, ...schemaWithoutDefs } = schema
     return { schema: schemaWithoutDefs, defs }
 }
 /**
@@ -134,14 +133,16 @@ function moveDefsToRoot(schema, allDefs, logger, path = []) {
             (val) =>
                 typeof val === "object" &&
                 val !== null &&
-                val["type"] === "null"
+                "type" in val &&
+                val.type === "null"
         )
         const nonNullSchemas = anyOfVals.filter(
             (val) =>
                 !(
                     typeof val === "object" &&
                     val !== null &&
-                    val["type"] === "null"
+                    "type" in val &&
+                    val.type === "null"
                 )
         )
         const objectSchemas = nonNullSchemas.filter(IsObject)
