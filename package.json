@@ -15,6 +15,7 @@
     ],
     "scripts": {
         "test": "vitest run",
+        "lint": "eslint .",
         "prettify": "pnpx prettier -w .",
         "build": "tsc",
         "prepare": "pnpm run build"
@@ -37,7 +38,10 @@
     },
     "devDependencies": {
         "@types/node": "^24.10.9",
+        "@eslint/js": "^9.36.0",
+        "eslint": "^9.36.0",
         "prettier": "^3.8.0",
+        "typescript-eslint": "^8.46.2",
         "typescript": "^5.9.3",
         "vitest": "^3.2.4"
     },

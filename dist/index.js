@@ -1,22 +1,104 @@
 function IsAnyOf(schema) {
-    return "anyOf" in schema;
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "anyOf" in schema &&
+        Array.isArray(schema.anyOf)
+    )
 }
 function IsObject(schema) {
-    return ("type" in schema &&
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "type" in schema &&
         (schema["type"] === "object" ||
             (Array.isArray(schema["type"]) &&
-                schema["type"].includes("object"))));
+                schema["type"].includes("object")))
+    )
 }
 function IsDefsObject(schema) {
-    return "$defs" in schema && "$ref" in schema;
+    return typeof schema === "object" && schema !== null && "$defs" in schema
 }
 function IsArray(schema) {
-    return ("type" in schema &&
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "type" in schema &&
         (schema["type"] === "array" ||
-            (Array.isArray(schema["type"]) && schema["type"].includes("array"))));
+            (Array.isArray(schema["type"]) && schema["type"].includes("array")))
+    )
 }
 function IsRef(schema) {
-    return "$ref" in schema;
+    return typeof schema === "object" && schema !== null && "$ref" in schema
+}
+function createLogger(options) {
+    if (options?.logger) {
+        return {
+            debug: options.logger.debug ?? (() => undefined),
+            info: options.logger.info ?? (() => undefined),
+            warn: options.logger.warn ?? (() => undefined),
+            error: options.logger.error ?? (() => undefined),
+        }
+    }
+    if (options?.debug) {
+        return {
+            debug: console.debug.bind(console),
+            info: console.info.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console),
+        }
+    }
+    return {
+        debug: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+    }
+}
+function formatPath(path) {
+    return path.length === 0 ? "#" : `#/${path.join("/")}`
+}
+function shouldRewriteRef(ref) {
+    if (ref.startsWith("#/")) {
+        return false
+    }
+    if (
+        ref.startsWith("http://") ||
+        ref.startsWith("https://") ||
+        ref.startsWith("file://") ||
+        ref.startsWith("/")
+    ) {
+        return false
+    }
+    if (ref.includes("#") || ref.includes("/")) {
+        return false
+    }
+    return /^[A-Za-z0-9_.-]+$/.test(ref)
+}
+function mergeTypeWithNull(typeValue) {
+    if (Array.isArray(typeValue)) {
+        return typeValue.includes("null") ? typeValue : [...typeValue, "null"]
+    }
+    if (typeof typeValue === "string") {
+        return [typeValue, "null"]
+    }
+    return ["null"]
+}
+function withClearedId(original, next) {
+    return typeof original === "object" &&
+        original !== null &&
+        "$id" in original
+        ? { ...next, $id: undefined }
+        : next
+}
+function removeDefs(schema) {
+    if (!IsDefsObject(schema)) {
+        return { schema }
+    }
+    const defs = schema.$defs
+    const schemaWithoutDefs = { ...schema }
+    delete schemaWithoutDefs.$defs
+    return { schema: schemaWithoutDefs, defs }
 }
 /**
  *
@@ -24,108 +106,145 @@ function IsRef(schema) {
  * @returns A copy of the schema object that was passed with any refs changed to reference
  * the new location of where refs are defined and with all $defs removed
  */
-function moveDefsToRoot(schema, allDefs) {
-    const result = {
-        ...schema,
-        // $id seems to break OpenAI API, so make sure it is always undefined at all levels
-        $id: undefined,
-    };
-    if (IsAnyOf(result)) {
-        /*
-        If we have anyOf, we extract both children and combine the types.
-
-        For example:
-        { anyOf: [ { type: "object", properties: { ... } }, { type: "null" } ] }
-        becomes
-        { type: ["object", "null"], properties: { ... } }
-        */
-        console.debug("Schema is anyOf, combining types", JSON.stringify(result, null, 4));
-        // Should be the object definition and null, in which case we'll mutate the object and recurse
-        const anyOfVals = [...result["anyOf"]];
-        let actualObjects = [];
-        let foundNull = false;
-        for (const val of anyOfVals) {
-            if ("type" in val && val["type"] !== "null") {
-                actualObjects.push(val);
+function moveDefsToRoot(schema, allDefs, logger, path = []) {
+    if (typeof schema !== "object" || schema === null) {
+        return schema
+    }
+    const { schema: schemaWithoutDefs, defs } = removeDefs(schema)
+    if (defs) {
+        for (const [schemaId, defSchema] of Object.entries(defs)) {
+            allDefs[schemaId] = moveDefsToRoot(
+                defSchema,
+                allDefs,
+                logger,
+                path.concat(["$defs", schemaId])
+            )
+        }
+    }
+    if (IsAnyOf(schemaWithoutDefs)) {
+        const anyOfVals = schemaWithoutDefs.anyOf.map((val, index) =>
+            moveDefsToRoot(
+                val,
+                allDefs,
+                logger,
+                path.concat(["anyOf", String(index)])
+            )
+        )
+        const nullSchemas = anyOfVals.filter(
+            (val) =>
+                typeof val === "object" &&
+                val !== null &&
+                val["type"] === "null"
+        )
+        const nonNullSchemas = anyOfVals.filter(
+            (val) =>
+                !(
+                    typeof val === "object" &&
+                    val !== null &&
+                    val["type"] === "null"
+                )
+        )
+        const objectSchemas = nonNullSchemas.filter(IsObject)
+        const hasNonObject = nonNullSchemas.some((val) => !IsObject(val))
+        if (nullSchemas.length > 0 && nonNullSchemas.length === 0) {
+            const formattedPath = formatPath(path)
+            logger.error(
+                "Unsupported anyOf union with only null branches",
+                formattedPath
+            )
+            throw new Error(
+                `Unsupported anyOf union with only null branches at ${formattedPath}`
+            )
+        }
+        if (
+            nullSchemas.length > 0 &&
+            !hasNonObject &&
+            objectSchemas.length === 1 &&
+            anyOfVals.length === 2
+        ) {
+            const baseObject = objectSchemas[0]
+            return withClearedId(baseObject, {
+                ...baseObject,
+                type: mergeTypeWithNull(baseObject.type),
+            })
+        }
+        return withClearedId(schemaWithoutDefs, {
+            ...schemaWithoutDefs,
+            anyOf: anyOfVals,
+        })
+    }
+    if (IsRef(schemaWithoutDefs)) {
+        const normalizedRef = shouldRewriteRef(schemaWithoutDefs.$ref)
+            ? `#/$defs/${schemaWithoutDefs.$ref}`
+            : schemaWithoutDefs.$ref
+        return withClearedId(schemaWithoutDefs, {
+            ...schemaWithoutDefs,
+            $ref: normalizedRef,
+        })
+    }
+    if (IsObject(schemaWithoutDefs)) {
+        const props = schemaWithoutDefs.properties
+        const nextProps = props ? {} : props
+        if (props) {
+            for (const propName of Object.keys(props)) {
+                nextProps[propName] = moveDefsToRoot(
+                    props[propName],
+                    allDefs,
+                    logger,
+                    path.concat(["properties", propName])
+                )
             }
-            else {
-                foundNull = true;
-            }
         }
-        if (foundNull && actualObjects.length > 0 && anyOfVals.length === 2) {
-            actualObjects[0]["type"] = [actualObjects[0]["type"], "null"];
-            // Recurse on the extracted type
-            console.log("Processing anyOf with null type, merging types into single object", result, anyOfVals);
-            return moveDefsToRoot(actualObjects[0], allDefs);
-        }
-        else if (foundNull) {
-            console.error("Did not find expected values in anyOf", JSON.stringify(anyOfVals, null, 4));
-            throw new Error("Did not find expected values in anyOf");
-        }
-        else {
-            console.log("Processing anyOf without null type, type is a union of real types", result, anyOfVals);
-            result["anyOf"] = [];
-            for (const val of anyOfVals) {
-                const moved = moveDefsToRoot(val, allDefs);
-                result["anyOf"].push(moved);
-            }
-            return result;
-        }
+        const nextSchema =
+            props !== undefined
+                ? { ...schemaWithoutDefs, properties: nextProps }
+                : { ...schemaWithoutDefs }
+        return withClearedId(schemaWithoutDefs, nextSchema)
     }
-    if (IsDefsObject(result)) {
-        // This result should be moved to the $defs root
-        console.debug("Object contains $defs, extracting to defs and recursing", result);
-        const { $defs: schemaDefs, $ref: schemaRef } = result;
-        for (const schemaId of Object.keys(schemaDefs)) {
-            allDefs[schemaId] = moveDefsToRoot(schemaDefs[schemaId], allDefs);
-        }
-        return {
-            $ref: `#/$defs/${schemaRef}`,
-        };
+    if (IsArray(schemaWithoutDefs)) {
+        const items = schemaWithoutDefs.items
+        const nextItems = Array.isArray(items)
+            ? items.map((item, index) =>
+                  moveDefsToRoot(
+                      item,
+                      allDefs,
+                      logger,
+                      path.concat(["items", String(index)])
+                  )
+              )
+            : items
+              ? moveDefsToRoot(items, allDefs, logger, path.concat(["items"]))
+              : items
+        const nextSchema =
+            items !== undefined
+                ? { ...schemaWithoutDefs, items: nextItems }
+                : { ...schemaWithoutDefs }
+        return withClearedId(schemaWithoutDefs, nextSchema)
     }
-    if (IsRef(result)) {
-        // If schema is a simple ref, ensure the path is updated and return it
-        if (!result["$ref"].startsWith("#/")) {
-            result["$ref"] = `#/$defs/${result["$ref"]}`;
-        }
-    }
-    if (IsObject(result)) {
-        console.debug("Processing object", JSON.stringify(result, null, 4));
-        const props = result.properties;
-        for (const propName in props) {
-            console.debug("Processing object", propName, JSON.stringify(props[propName], null, 4));
-            const childProp = moveDefsToRoot(props[propName], allDefs);
-            // allDefs = { ...allDefs, ...childDefs }
-            result.properties[propName] = childProp;
-        }
-    }
-    if (IsArray(result)) {
-        result.items = moveDefsToRoot(result.items, allDefs);
-        return result;
-    }
-    return result;
+    return withClearedId(schemaWithoutDefs, {
+        ...schemaWithoutDefs,
+    })
 }
-export function ConvertToOpenAISchema(inputSchema, schemaName) {
-    const schema = JSON.parse(JSON.stringify(inputSchema));
+export function ConvertToOpenAISchema(inputSchema, schemaName, options) {
+    const logger = createLogger(options)
     const PromptSchema = {
         name: schemaName,
         strict: true,
-        schema: schema,
-    };
-    const rootDefs = {};
-    const finalSchema = moveDefsToRoot(schema, rootDefs);
+        schema: inputSchema,
+    }
+    const rootDefs = {}
+    const finalSchema = moveDefsToRoot(inputSchema, rootDefs, logger)
     return {
         ...PromptSchema,
         schema: {
-            ...PromptSchema.schema,
             ...finalSchema,
             ...(Object.keys(rootDefs).length > 0
                 ? {
-                    $defs: {
-                        ...rootDefs,
-                    },
-                }
+                      $defs: {
+                          ...rootDefs,
+                      },
+                  }
                 : {}),
         },
-    };
+    }
 }

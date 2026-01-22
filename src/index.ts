@@ -115,9 +115,7 @@ function shouldRewriteRef(ref: string): boolean {
 
 function mergeTypeWithNull(typeValue: unknown): unknown[] {
     if (Array.isArray(typeValue)) {
-        return typeValue.includes("null")
-            ? typeValue
-            : [...typeValue, "null"]
+        return typeValue.includes("null") ? typeValue : [...typeValue, "null"]
     }
     if (typeof typeValue === "string") {
         return [typeValue, "null"]
@@ -136,17 +134,17 @@ function withClearedId(
         : next
 }
 
-function removeDefs(
+function removeDefs(schema: TSchema): {
     schema: TSchema
-): { schema: TSchema; defs?: Record<string, TSchema> } {
+    defs?: Record<string, TSchema>
+} {
     if (!IsDefsObject(schema)) {
         return { schema }
     }
 
     const defs = schema.$defs
-    const schemaWithoutDefs = { ...schema }
-    delete (schemaWithoutDefs as TObjectWithDefs).$defs
-    return { schema: schemaWithoutDefs, defs }
+    const { $defs: _removed, ...schemaWithoutDefs } = schema as TObjectWithDefs
+    return { schema: schemaWithoutDefs as TSchema, defs }
 }
 
 /**
@@ -180,15 +178,29 @@ function moveDefsToRoot(
 
     if (IsAnyOf(schemaWithoutDefs)) {
         const anyOfVals = schemaWithoutDefs.anyOf.map((val, index) =>
-            moveDefsToRoot(val, allDefs, logger, path.concat(["anyOf", String(index)]))
+            moveDefsToRoot(
+                val,
+                allDefs,
+                logger,
+                path.concat(["anyOf", String(index)])
+            )
         )
 
         const nullSchemas = anyOfVals.filter(
-            (val) => typeof val === "object" && val !== null && val["type"] === "null"
+            (val) =>
+                typeof val === "object" &&
+                val !== null &&
+                "type" in val &&
+                val.type === "null"
         )
         const nonNullSchemas = anyOfVals.filter(
             (val) =>
-                !(typeof val === "object" && val !== null && val["type"] === "null")
+                !(
+                    typeof val === "object" &&
+                    val !== null &&
+                    "type" in val &&
+                    val.type === "null"
+                )
         )
         const objectSchemas = nonNullSchemas.filter(IsObject)
         const hasNonObject = nonNullSchemas.some((val) => !IsObject(val))
@@ -249,9 +261,10 @@ function moveDefsToRoot(
             }
         }
 
-        const nextSchema = props !== undefined
-            ? { ...schemaWithoutDefs, properties: nextProps }
-            : { ...schemaWithoutDefs }
+        const nextSchema =
+            props !== undefined
+                ? { ...schemaWithoutDefs, properties: nextProps }
+                : { ...schemaWithoutDefs }
 
         return withClearedId(schemaWithoutDefs, nextSchema) as TSchema
     }
@@ -268,17 +281,13 @@ function moveDefsToRoot(
                   )
               )
             : items
-              ? moveDefsToRoot(
-                    items,
-                    allDefs,
-                    logger,
-                    path.concat(["items"])
-                )
+              ? moveDefsToRoot(items, allDefs, logger, path.concat(["items"]))
               : items
 
-        const nextSchema = items !== undefined
-            ? { ...schemaWithoutDefs, items: nextItems }
-            : { ...schemaWithoutDefs }
+        const nextSchema =
+            items !== undefined
+                ? { ...schemaWithoutDefs, items: nextItems }
+                : { ...schemaWithoutDefs }
 
         return withClearedId(schemaWithoutDefs, nextSchema) as TSchema
     }

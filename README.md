@@ -32,18 +32,18 @@ const promptSchema = ConvertToOpenAISchema(User, "User")
 
 ```json
 {
-  "name": "User",
-  "strict": true,
-  "schema": {
-    "type": "object",
-    "properties": {
-      "id": { "type": "string", "format": "uuid" },
-      "name": { "type": "string" },
-      "tags": { "type": "array", "items": { "type": "string" } }
-    },
-    "required": ["id", "name", "tags"],
-    "additionalProperties": false
-  }
+    "name": "User",
+    "strict": true,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "id": { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "name", "tags"],
+        "additionalProperties": false
+    }
 }
 ```
 

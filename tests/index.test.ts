@@ -371,9 +371,9 @@ describe("index tests", () => {
             },
         }
 
-        expect(
-            ConvertToOpenAISchema(schemaWithDefs, "RootDefsSchema")
-        ).toEqual(expectedResult)
+        expect(ConvertToOpenAISchema(schemaWithDefs, "RootDefsSchema")).toEqual(
+            expectedResult
+        )
     })
 
     test("Processes tuple items in arrays", () => {
