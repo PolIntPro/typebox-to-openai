@@ -459,6 +459,84 @@ describe("index tests", () => {
         ).toThrow("Unsupported schema")
     })
 
+    test("Throws on multi-entry allOf", () => {
+        const schema = {
+            allOf: [
+                { type: "object", properties: { a: { type: "string" } }, required: ["a"], additionalProperties: false },
+                { type: "object", properties: { b: { type: "number" } }, required: ["b"], additionalProperties: false },
+            ],
+        }
+        expect(() => ConvertToOpenAISchema(schema, "AllOfSchema")).toThrow(
+            'Unsupported schema type "allOf" at #'
+        )
+    })
+
+    test("Flattens single-entry allOf", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                child: { allOf: [{ $ref: "Foo" }] },
+            },
+            required: ["child"],
+            additionalProperties: false,
+        }
+        const result = ConvertToOpenAISchema(schema, "SingleAllOf")
+        expect((result.schema as Record<string, unknown>).properties).toEqual({
+            child: { $ref: "#/$defs/Foo" },
+        })
+    })
+
+    test("Flattens single-entry allOf with sibling keywords", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                child: {
+                    allOf: [{ type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: false }],
+                    description: "A child object",
+                },
+            },
+            required: ["child"],
+            additionalProperties: false,
+        }
+        const result = ConvertToOpenAISchema(schema, "AllOfSibling")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        expect(props.child.description).toBe("A child object")
+        expect(props.child.type).toBe("object")
+        expect(props.child.allOf).toBeUndefined()
+    })
+
+    test("Throws on oneOf nested in property", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                value: {
+                    oneOf: [{ type: "string" }, { type: "number" }],
+                },
+            },
+            required: ["value"],
+            additionalProperties: false,
+        }
+        expect(() => ConvertToOpenAISchema(schema, "OneOfSchema")).toThrow(
+            'Unsupported schema type "oneOf" at #/properties/value'
+        )
+    })
+
+    test("Throws on not", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                value: {
+                    not: { type: "string" },
+                },
+            },
+            required: ["value"],
+            additionalProperties: false,
+        }
+        expect(() => ConvertToOpenAISchema(schema, "NotSchema")).toThrow(
+            'Unsupported schema type "not" at #/properties/value'
+        )
+    })
+
     test("Does not mutate input schema", () => {
         const inputSchema = {
             type: "object",

@@ -79,6 +79,32 @@ function IsRef(schema: TSchema): schema is TRef {
     return typeof schema === "object" && schema !== null && "$ref" in schema
 }
 
+function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[] } {
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "allOf" in schema &&
+        Array.isArray((schema as Record<string, unknown>).allOf)
+    )
+}
+
+function IsOneOf(schema: TSchema): schema is TSchema & { oneOf: TSchema[] } {
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "oneOf" in schema &&
+        Array.isArray((schema as Record<string, unknown>).oneOf)
+    )
+}
+
+function IsNot(schema: TSchema): schema is TSchema & { not: TSchema } {
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "not" in schema
+    )
+}
+
 function createLogger(options?: TConvertOptions): Required<TLogger> {
     if (options?.logger) {
         return {
@@ -187,6 +213,38 @@ function moveDefsToRoot(
                 path.concat(["$defs", schemaId])
             )
         }
+    }
+
+    if (IsAllOf(schemaWithoutDefs)) {
+        if (schemaWithoutDefs.allOf.length === 1) {
+            const { allOf: _allOf, ...siblings } = schemaWithoutDefs as unknown as Record<string, unknown>
+            const unwrapped = {
+                ...schemaWithoutDefs.allOf[0],
+                ...siblings,
+            } as TSchema
+            return moveDefsToRoot(unwrapped, allDefs, logger, path)
+        }
+        const formattedPath = formatPath(path)
+        logger.error("Unsupported schema type \"allOf\"", formattedPath)
+        throw new Error(
+            `Unsupported schema type "allOf" at ${formattedPath}`
+        )
+    }
+
+    if (IsOneOf(schemaWithoutDefs)) {
+        const formattedPath = formatPath(path)
+        logger.error("Unsupported schema type \"oneOf\"", formattedPath)
+        throw new Error(
+            `Unsupported schema type "oneOf" at ${formattedPath}`
+        )
+    }
+
+    if (IsNot(schemaWithoutDefs)) {
+        const formattedPath = formatPath(path)
+        logger.error("Unsupported schema type \"not\"", formattedPath)
+        throw new Error(
+            `Unsupported schema type "not" at ${formattedPath}`
+        )
     }
 
     if (IsAnyOf(schemaWithoutDefs)) {
