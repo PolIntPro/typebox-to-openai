@@ -739,4 +739,147 @@ describe("index tests", () => {
         expect(props.nickname).toBeDefined()
         expect(props.nickname.type).toBe("string")
     })
+
+    test("Lifts deeply nested $defs (3+ levels) to root and rewrites bare refs", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                child: { $ref: "Level1" },
+            },
+            required: ["child"],
+            additionalProperties: false,
+            $defs: {
+                Level1: {
+                    type: "object",
+                    properties: {
+                        nested: { $ref: "Level2" },
+                    },
+                    required: ["nested"],
+                    additionalProperties: false,
+                    $defs: {
+                        Level2: {
+                            type: "object",
+                            properties: {
+                                deep: { $ref: "Level3" },
+                            },
+                            required: ["deep"],
+                            additionalProperties: false,
+                            $defs: {
+                                Level3: {
+                                    type: "object",
+                                    properties: { value: { type: "string" } },
+                                    required: ["value"],
+                                    additionalProperties: false,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        const result = ConvertToOpenAISchema(schema, "DeepDefs")
+        const s = result.schema as Record<string, Record<string, unknown>>
+        // All $defs should be at root level
+        expect(Object.keys(s.$defs)).toContain("Level1")
+        expect(Object.keys(s.$defs)).toContain("Level2")
+        expect(Object.keys(s.$defs)).toContain("Level3")
+        // Nested schemas should not have their own $defs
+        const level1 = s.$defs.Level1 as Record<string, unknown>
+        expect(level1.$defs).toBeUndefined()
+        // Bare refs should be rewritten to #/$defs/ format
+        const props = s.properties as Record<string, Record<string, unknown>>
+        expect(props.child.$ref).toBe("#/$defs/Level1")
+    })
+
+    test("Empty object Type.Object({}) works", () => {
+        const schema = Type.Object({}, { additionalProperties: false })
+        const result = ConvertToOpenAISchema(schema, "EmptyObject")
+        const s = result.schema as Record<string, unknown>
+        expect(s.type).toBe("object")
+        expect(s.properties).toEqual({})
+    })
+
+    test("Removes $id at all nesting levels", () => {
+        const schema = {
+            $id: "Root",
+            type: "object",
+            properties: {
+                child: {
+                    $id: "Child",
+                    type: "object",
+                    properties: {
+                        value: { $id: "Value", type: "string" },
+                    },
+                    required: ["value"],
+                    additionalProperties: false,
+                },
+            },
+            required: ["child"],
+            additionalProperties: false,
+        }
+        const result = ConvertToOpenAISchema(schema, "IdRemoval")
+        const s = result.schema as Record<string, unknown>
+        expect(s.$id).toBeUndefined()
+        const child = (s.properties as Record<string, Record<string, unknown>>).child
+        expect(child.$id).toBeUndefined()
+        const value = (child.properties as Record<string, Record<string, unknown>>).value
+        expect(value.$id).toBeUndefined()
+    })
+
+    test("$ref with dots and underscores are rewritten", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                dotRef: { $ref: "Foo.Bar" },
+                underRef: { $ref: "Foo_Bar" },
+            },
+            required: ["dotRef", "underRef"],
+            additionalProperties: false,
+        }
+        const result = ConvertToOpenAISchema(schema, "SpecialRefs")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        expect(props.dotRef.$ref).toBe("#/$defs/Foo.Bar")
+        expect(props.underRef.$ref).toBe("#/$defs/Foo_Bar")
+    })
+
+    test("mergeTypeWithNull does not duplicate null in array type", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                maybe: {
+                    anyOf: [
+                        {
+                            type: ["object", "null"],
+                            properties: { id: { type: "string" } },
+                            required: ["id"],
+                            additionalProperties: false,
+                        },
+                        { type: "null" },
+                    ],
+                },
+            },
+            required: ["maybe"],
+            additionalProperties: false,
+        }
+        const result = ConvertToOpenAISchema(schema, "NullIdempotent")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const nullCount = (props.maybe.type as string[]).filter(
+            (t) => t === "null"
+        ).length
+        expect(nullCount).toBe(1)
+    })
+
+    test("Schema description fields are preserved", () => {
+        const schema = Type.Object(
+            {
+                name: Type.String({ description: "The user's name" }),
+            },
+            { additionalProperties: false, description: "A user object" }
+        )
+        const result = ConvertToOpenAISchema(schema, "DescSchema")
+        const s = result.schema as Record<string, unknown>
+        expect(s.description).toBe("A user object")
+        const props = s.properties as Record<string, Record<string, unknown>>
+        expect(props.name.description).toBe("The user's name")
+    })
 })
