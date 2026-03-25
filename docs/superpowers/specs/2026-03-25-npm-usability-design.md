@@ -32,7 +32,7 @@ Add JSDoc docstrings to all exported symbols in `src/index.ts`:
 | `TPromptSchema` | The `{ name, strict: true, schema }` wrapper object that OpenAI's structured output API expects |
 | `TLogger` | Optional logger interface with `debug`, `info`, `warn`, `error` methods |
 | `TConvertOptions` | Options object: `logger` (custom logger) and `debug` (enable console logging) |
-| `ConvertToOpenAISchema()` | Parameters, return type, transformations performed ($defs lifting, $ref normalization, $id removal, nullable object merging), when it throws (unsupported types, null-only unions) |
+| `ConvertToOpenAISchema()` | Parameters, return type, transformations performed ($defs lifting, $ref normalization, $id removal, nullable object merging, single-entry `allOf` flattening), when it throws (unsupported types, null-only unions, arrays without items) |
 
 Internal helper functions do **not** get JSDoc.
 
@@ -43,7 +43,7 @@ Move tests from top-level `tests/` to colocated `src/__tests__/`:
 - `tests/index.test.ts` → `src/__tests__/index.test.ts`
 - `tests/openai.integration.test.ts` → `src/__tests__/openai.integration.test.ts`
 - Delete the `tests/` directory
-- Update imports to reference source directly (`"../index"` instead of `"../"` resolving to `dist/`)
+- Update imports in **both** test files to reference source directly (`"../index"` instead of `"../"` resolving to `dist/`)
 - Update `tsconfig.json` to exclude `src/__tests__/` so test files are not compiled into `dist/` (add `"src/__tests__"` to the `exclude` array)
 - Verify vitest still discovers tests in the new location (should work by default since it finds `**/*.test.ts`)
 - Update CLAUDE.md to reflect new paths and remove "build before testing" note
@@ -54,6 +54,20 @@ Add fail-fast validation in `moveDefsToRoot` traversal. When encountering an uns
 
 - The unsupported type/structural indicator
 - The JSON Pointer path (via existing `formatPath`)
+
+### Control flow ordering
+
+New checks are inserted into `moveDefsToRoot` in this order, after `$defs` extraction and before existing branches:
+
+1. Non-object / boolean schema early return → **change from silent return to throw**
+2. `allOf` check → flatten single-entry, throw on multi-entry
+3. `oneOf` check → throw
+4. `not` check → throw
+5. *(existing)* `anyOf` → existing handling
+6. *(existing)* `$ref` → existing handling
+7. *(existing)* `object` → existing handling
+8. *(existing)* `array` → existing handling, **plus throw if no `items`**
+9. Fallthrough → **change from silent passthrough to**: allow if node has `type`, `const`, or `enum`; otherwise throw
 
 ### Supported types (handled or pass-through)
 
@@ -68,7 +82,7 @@ These are the JSON Schema constructs that OpenAI structured outputs support in s
 
 ### Single-entry `allOf` (flatten)
 
-Single-entry `allOf` (e.g., `{ allOf: [{ $ref: "Foo" }] }`) is a common pattern emitted by Pydantic and other schema generators. OpenAI accepts it. The library should **flatten** single-entry `allOf` by unwrapping the sole element and recursing into it.
+Single-entry `allOf` (e.g., `{ allOf: [{ $ref: "Foo" }] }`) is a common pattern emitted by Pydantic and other schema generators. OpenAI accepts it. The library should **flatten** single-entry `allOf` by unwrapping the sole element, merging any sibling keywords (e.g., `description`) from the outer object onto the unwrapped result, and recursing into it.
 
 ### Unsupported types (should throw)
 
@@ -81,7 +95,9 @@ Single-entry `allOf` (e.g., `{ allOf: [{ $ref: "Foo" }] }`) is a common pattern 
 Error message format (consistent with existing null-only anyOf error):
 ```
 Unsupported schema type "allOf" at #/properties/foo
+Unsupported schema: array type requires "items" at #/properties/tags
 Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum" at #/properties/bar
+Duplicate $defs key "Child" at #/properties/nested/$defs/Child
 ```
 
 ## 5. Test Coverage Improvements
@@ -98,6 +114,7 @@ All new tests go in `src/__tests__/index.test.ts`.
 
 - Multi-entry `allOf` at root → throws with path `#`
 - Single-entry `allOf` → flattened, does not throw
+- Single-entry `allOf` wrapping a `$ref` → flattened and `$ref` rewritten correctly
 - `oneOf` nested in property → throws with correct deep path
 - `not` → throws with path
 - Leaf node with no `type`/`$ref`/`anyOf`/`const`/`enum` → throws
@@ -109,14 +126,14 @@ All new tests go in `src/__tests__/index.test.ts`.
 - `Type.Integer()` → produces `{type: "integer"}`, passes through correctly
 - `Type.Literal("foo")` → produces `{const: "foo"}`, passes through
 - `Type.Enum()` → produces `{enum: [...]}`, passes through
-- `Type.Optional()` inside objects → property exists in `properties` but is absent from `required` array
+- `Type.Optional()` inside objects → property exists in `properties` but is absent from `required` array. The library converts faithfully; it does not enforce OpenAI's requirement that all properties be in `required`. This is the user's responsibility.
 
 ### D. Edge case tests
 
 - Deeply nested `$defs` (3+ levels) → all lifted to root
 - Empty object `Type.Object({})` → works
 - `$id` removal verified at all nesting levels
-- `$defs` key collision (two nested schemas define same key) → last-wins behavior documented via test
+- `$defs` key collision (two nested schemas define same key) → throws an error (silent overwrite could produce incorrect schemas that OpenAI rejects at runtime with confusing errors)
 - `$ref` with dots (`"Foo.Bar"`) and underscores (`"Foo_Bar"`) → rewritten correctly
 - `mergeTypeWithNull` when type is already an array → no duplicate `"null"`
 - `mergeTypeWithNull` when array already contains `"null"` → idempotent
