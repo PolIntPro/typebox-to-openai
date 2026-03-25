@@ -1,188 +1,29 @@
-import type { TArray, TObject, TRef, TSchema } from "typebox/type"
+import type { TSchema } from "typebox/type"
+import type {
+    TConvertOptions,
+    TLogger,
+    TObjectWithDefs,
+    TPromptSchema,
+} from "./types.js"
+import {
+    IsAllOf,
+    IsAnyOf,
+    IsArray,
+    IsNot,
+    IsObject,
+    IsOneOf,
+    IsRef,
+} from "./guards.js"
+import {
+    createLogger,
+    formatPath,
+    mergeTypeWithNull,
+    removeDefs,
+    shouldRewriteRef,
+    withClearedId,
+} from "./utils.js"
 
-type TObjectWithDefs = TSchema & {
-    $defs: Record<string, TSchema>
-}
-
-type TAnyOf = {
-    anyOf: TSchema[]
-}
-
-/**
- * The wrapper object that OpenAI's structured output API expects.
- * Pass this to the `text.format` or `response_format` parameter
- * when calling the OpenAI API.
- */
-export interface TPromptSchema {
-    name: string
-    strict: true
-    schema: TSchema
-}
-
-/**
- * Custom logger interface for controlling diagnostic output.
- * All methods are optional — any omitted method is silently ignored.
- */
-export type TLogger = {
-    debug?: (...args: unknown[]) => void
-    info?: (...args: unknown[]) => void
-    warn?: (...args: unknown[]) => void
-    error?: (...args: unknown[]) => void
-}
-
-/**
- * Options for {@link ConvertToOpenAISchema}.
- *
- * @property logger - Custom logger object. Takes precedence over `debug`.
- * @property debug - When `true`, logs diagnostics to the console.
- */
-export type TConvertOptions = {
-    logger?: TLogger
-    debug?: boolean
-}
-
-function IsAnyOf(schema: TSchema): schema is TAnyOf {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "anyOf" in schema &&
-        Array.isArray((schema as TAnyOf).anyOf)
-    )
-}
-
-function IsObject(schema: TSchema): schema is TObject {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "type" in schema &&
-        (schema["type"] === "object" ||
-            (Array.isArray(schema["type"]) &&
-                schema["type"].includes("object")))
-    )
-}
-
-function IsDefsObject(schema: TSchema): schema is TObjectWithDefs {
-    return typeof schema === "object" && schema !== null && "$defs" in schema
-}
-
-function IsArray(schema: TSchema): schema is TArray<TSchema> {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "type" in schema &&
-        (schema["type"] === "array" ||
-            (Array.isArray(schema["type"]) && schema["type"].includes("array")))
-    )
-}
-
-function IsRef(schema: TSchema): schema is TRef {
-    return typeof schema === "object" && schema !== null && "$ref" in schema
-}
-
-function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[] } {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "allOf" in schema &&
-        Array.isArray((schema as Record<string, unknown>).allOf)
-    )
-}
-
-function IsOneOf(schema: TSchema): schema is TSchema & { oneOf: TSchema[] } {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "oneOf" in schema &&
-        Array.isArray((schema as Record<string, unknown>).oneOf)
-    )
-}
-
-function IsNot(schema: TSchema): schema is TSchema & { not: TSchema } {
-    return typeof schema === "object" && schema !== null && "not" in schema
-}
-
-function createLogger(options?: TConvertOptions): Required<TLogger> {
-    if (options?.logger) {
-        return {
-            debug: options.logger.debug ?? (() => undefined),
-            info: options.logger.info ?? (() => undefined),
-            warn: options.logger.warn ?? (() => undefined),
-            error: options.logger.error ?? (() => undefined),
-        }
-    }
-
-    if (options?.debug) {
-        return {
-            debug: console.debug.bind(console),
-            info: console.info.bind(console),
-            warn: console.warn.bind(console),
-            error: console.error.bind(console),
-        }
-    }
-
-    return {
-        debug: () => undefined,
-        info: () => undefined,
-        warn: () => undefined,
-        error: () => undefined,
-    }
-}
-
-function formatPath(path: string[]): string {
-    return path.length === 0 ? "#" : `#/${path.join("/")}`
-}
-
-function shouldRewriteRef(ref: string): boolean {
-    if (ref.startsWith("#/")) {
-        return false
-    }
-    if (
-        ref.startsWith("http://") ||
-        ref.startsWith("https://") ||
-        ref.startsWith("file://") ||
-        ref.startsWith("/")
-    ) {
-        return false
-    }
-    if (ref.includes("#") || ref.includes("/")) {
-        return false
-    }
-    return /^[A-Za-z0-9_.-]+$/.test(ref)
-}
-
-function mergeTypeWithNull(typeValue: unknown): unknown[] {
-    if (Array.isArray(typeValue)) {
-        return typeValue.includes("null") ? typeValue : [...typeValue, "null"]
-    }
-    if (typeof typeValue === "string") {
-        return [typeValue, "null"]
-    }
-    return ["null"]
-}
-
-function withClearedId(
-    original: TSchema,
-    next: Record<string, unknown>
-): Record<string, unknown> {
-    return typeof original === "object" &&
-        original !== null &&
-        "$id" in original
-        ? { ...next, $id: undefined }
-        : next
-}
-
-function removeDefs(schema: TSchema): {
-    schema: TSchema
-    defs?: Record<string, TSchema>
-} {
-    if (!IsDefsObject(schema)) {
-        return { schema }
-    }
-
-    const defs = schema.$defs
-    const { $defs: _removed, ...schemaWithoutDefs } = schema as TObjectWithDefs
-    return { schema: schemaWithoutDefs as TSchema, defs }
-}
+export type { TPromptSchema, TLogger, TConvertOptions } from "./types.js"
 
 function moveDefsToRoot(
     schema: TSchema,
