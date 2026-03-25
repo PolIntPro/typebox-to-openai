@@ -1,6 +1,6 @@
 {
     "name": "typebox-to-openai",
-    "version": "1.0.5",
+    "version": "2.0.0",
     "description": "Convert Typebox schema to OpenAI API schema for structured output",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -24,7 +24,10 @@
     "keywords": [
         "typebox",
         "openai",
-        "schema"
+        "schema",
+        "structured-output",
+        "json-schema",
+        "typebox-openai"
     ],
     "author": "",
     "license": "MIT",
