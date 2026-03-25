@@ -29,6 +29,7 @@ No test files are modified. Both `src/__tests__/index.test.ts` and `src/__tests_
 ### Task 1: Create `src/types.ts`
 
 **Files:**
+
 - Create: `src/types.ts`
 
 - [ ] **Step 1: Create `src/types.ts` with all type definitions**
@@ -95,6 +96,7 @@ git commit -m "Extract type definitions into src/types.ts"
 ### Task 2: Create `src/guards.ts`
 
 **Files:**
+
 - Create: `src/guards.ts`
 
 - [ ] **Step 1: Create `src/guards.ts` with all 8 type guards**
@@ -141,7 +143,9 @@ export function IsRef(schema: TSchema): schema is TRef {
     return typeof schema === "object" && schema !== null && "$ref" in schema
 }
 
-export function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[] } {
+export function IsAllOf(
+    schema: TSchema
+): schema is TSchema & { allOf: TSchema[] } {
     return (
         typeof schema === "object" &&
         schema !== null &&
@@ -150,7 +154,9 @@ export function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[]
     )
 }
 
-export function IsOneOf(schema: TSchema): schema is TSchema & { oneOf: TSchema[] } {
+export function IsOneOf(
+    schema: TSchema
+): schema is TSchema & { oneOf: TSchema[] } {
     return (
         typeof schema === "object" &&
         schema !== null &&
@@ -181,6 +187,7 @@ git commit -m "Extract type guards into src/guards.ts"
 ### Task 3: Create `src/utils.ts`
 
 **Files:**
+
 - Create: `src/utils.ts`
 
 - [ ] **Step 1: Create `src/utils.ts` with all 6 utility functions**
@@ -291,6 +298,7 @@ git commit -m "Extract utility functions into src/utils.ts"
 ### Task 4: Rewrite `src/index.ts` to import from new modules
 
 **Files:**
+
 - Modify: `src/index.ts` (full rewrite)
 
 - [ ] **Step 1: Replace `src/index.ts` contents**

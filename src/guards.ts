@@ -39,7 +39,9 @@ export function IsRef(schema: TSchema): schema is TRef {
     return typeof schema === "object" && schema !== null && "$ref" in schema
 }
 
-export function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[] } {
+export function IsAllOf(
+    schema: TSchema
+): schema is TSchema & { allOf: TSchema[] } {
     return (
         typeof schema === "object" &&
         schema !== null &&
@@ -48,7 +50,9 @@ export function IsAllOf(schema: TSchema): schema is TSchema & { allOf: TSchema[]
     )
 }
 
-export function IsOneOf(schema: TSchema): schema is TSchema & { oneOf: TSchema[] } {
+export function IsOneOf(
+    schema: TSchema
+): schema is TSchema & { oneOf: TSchema[] } {
     return (
         typeof schema === "object" &&
         schema !== null &&
