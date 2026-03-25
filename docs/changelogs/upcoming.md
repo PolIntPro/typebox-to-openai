@@ -1,19 +1,1 @@
 # Upcoming
-
-<changes starting-hash="eb57e57" ending-hash="58baf5c">
-
-## Changed
-
-- Moved `typebox` from `dependencies` to `peerDependencies` (`^1.1.6`)
-- Replaced `exports.require` (CJS) entry with `exports.types` in `package.json` — ESM-only
-- Excluded `dist/tsconfig.tsbuildinfo` from published `files`
-- Cleaned up `.gitignore` to match actual project structure (removed Next.js/Vercel boilerplate)
-
-## Removed
-
-- Removed `commander` from `dependencies` (unused; no CLI entry point)
-- Removed `.npmignore` (redundant — `files` field already allowlists `dist/`)
-- Removed `scripts/index.ts` (dead CLI script depending on removed `commander`)
-- Untracked `dist/` and `.vscode/` from git
-
-</changes>
