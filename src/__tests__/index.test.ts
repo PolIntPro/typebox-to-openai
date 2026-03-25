@@ -626,4 +626,53 @@ describe("index tests", () => {
 
         expect(inputSchema).toEqual(originalSnapshot)
     })
+
+    test("Works with no options", () => {
+        expect(() =>
+            ConvertToOpenAISchema(SimpleSchema, "SimpleSchema")
+        ).not.toThrow()
+    })
+
+    test("Works with undefined options", () => {
+        expect(() =>
+            ConvertToOpenAISchema(SimpleSchema, "SimpleSchema", undefined)
+        ).not.toThrow()
+    })
+
+    test("debug: true enables console logging without throwing", () => {
+        expect(() =>
+            ConvertToOpenAISchema(SimpleSchema, "SimpleSchema", { debug: true })
+        ).not.toThrow()
+    })
+
+    test("Custom logger receives error calls on unsupported schema", () => {
+        const errorCalls: unknown[][] = []
+        const logger: TLogger = {
+            error: (...args: unknown[]) => errorCalls.push(args),
+        }
+        const badSchema = {
+            type: "object",
+            properties: {
+                value: { oneOf: [{ type: "string" }, { type: "number" }] },
+            },
+            required: ["value"],
+            additionalProperties: false,
+        }
+        expect(() =>
+            ConvertToOpenAISchema(badSchema, "BadSchema", { logger })
+        ).toThrow()
+        expect(errorCalls.length).toBeGreaterThan(0)
+    })
+
+    test("Custom logger is accepted without throwing", () => {
+        const logger: TLogger = {
+            debug: () => undefined,
+            info: () => undefined,
+            warn: () => undefined,
+            error: () => undefined,
+        }
+        expect(() =>
+            ConvertToOpenAISchema(SimpleSchema, "SimpleSchema", { logger })
+        ).not.toThrow()
+    })
 })
