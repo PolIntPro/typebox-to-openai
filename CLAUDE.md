@@ -5,9 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Generic Instructions
 
 - Git commit messages should not include any co-authoring content
-- Tests import from `"../"` (resolves to `dist/`), so run `pnpm build` before running tests if source has changed
 - Integration tests hit the real OpenAI API and are skipped when `OPENAI_API_KEY` is not set. Also configurable: `OPENAI_BASE_URL`, `OPENAI_MODEL`
 - When I report a bug, don't start by trying to fix it. Instead, start by writing a test that reproduces the bug. Then, use subagents to attempt fixes and prove them with a passing test.
+- For OpenAI structured output details, fetch https://developers.openai.com/api/docs/guides/structured-outputs.md
 
 ## Commands
 
@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint` — ESLint with typescript-eslint
 - `pnpm prettify` — Prettier
 - `pnpm test` — run all tests (vitest)
-- `pnpx vitest run tests/index.test.ts` — run a single test file
+- `pnpx vitest run src/__tests__/index.test.ts` — run a single test file
 - `pnpx vitest run -t "test name"` — run a single test case
 
 ## Coding Conventions
