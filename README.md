@@ -145,7 +145,7 @@ The optional third argument accepts:
 | Option   | Type                               | Description                                                                                           |
 | -------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `debug`  | `boolean`                          | When `true`, logs to the console via `console.debug`, `console.info`, `console.warn`, `console.error` |
-| `logger` | `{ debug?, info?, warn?, error? }` | Custom logger object — each method is optional and receives `(...args: unknown[])`                    |
+| `logger` | `TLogger` (`{ debug?, info?, warn?, error? }`) | Custom logger object — each method is optional and receives `(...args: unknown[])`                    |
 
 If both `logger` and `debug` are provided, `logger` takes precedence.
 
@@ -157,7 +157,41 @@ The converter applies these transformations recursively:
 - **`$ref` normalization** — bare ref values like `"Child"` are rewritten to `"#/$defs/Child"`. External refs (`https://...`), absolute refs (`/...`), and JSON pointer refs (`#/...`) are left unchanged.
 - **`$id` removal** — `$id` fields are removed at all levels to avoid OpenAI API validation errors.
 - **Nullable object merging** — `anyOf` unions with exactly one object branch and one null branch are merged into `{ type: ["object", "null"], ... }`.
+- **Single-entry `allOf` flattening** — `{ allOf: [schema] }` is unwrapped to just `schema`, with any sibling keywords (e.g., `description`) merged onto the result. This is common in Pydantic-generated schemas.
 - **Immutability** — the input schema is never mutated; a new object is always returned.
+
+## Supported schema types
+
+The following JSON Schema constructs are supported and compatible with OpenAI's strict mode:
+
+| Construct | Example | Notes |
+|-----------|---------|-------|
+| `string` | `Type.String()` | Supports `format` (e.g., `"uuid"`) |
+| `number` | `Type.Number()` | |
+| `integer` | `Type.Integer()` | |
+| `boolean` | `Type.Boolean()` | |
+| `null` | `Type.Null()` | |
+| `object` | `Type.Object(...)` | Must include `additionalProperties: false` for OpenAI strict mode |
+| `array` | `Type.Array(...)` | Must include `items` |
+| `anyOf` | `Type.Union([...])` | Nullable object unions are merged automatically |
+| `$ref` / `$defs` | `Type.Ref(...)` / `Type.Cyclic(...)` | Bare refs rewritten to `#/$defs/...` |
+| `const` | `Type.Literal(...)` | |
+| `enum` | `Type.Enum(...)` | TypeBox emits `{ enum: [...] }` directly |
+| Single-entry `allOf` | Common in Pydantic output | Automatically flattened |
+
+## Unsupported schema types
+
+The following constructs will cause `ConvertToOpenAISchema` to throw an error, since they are not supported by OpenAI's structured output strict mode:
+
+| Construct | Error |
+|-----------|-------|
+| Multi-entry `allOf` | `Unsupported schema type "allOf"` |
+| `oneOf` | `Unsupported schema type "oneOf"` |
+| `not` | `Unsupported schema type "not"` |
+| Array without `items` | `Unsupported schema: array type requires "items"` |
+| Missing `type`/`$ref`/`anyOf`/`const`/`enum` | `Unsupported schema: missing "type", "$ref", ...` |
+| Duplicate `$defs` keys | `Duplicate $defs key "..."` |
+| `anyOf` with only null branches | `Unsupported anyOf union with only null branches` |
 
 ## Development
 
@@ -171,7 +205,7 @@ pnpm prettify         # format with Prettier
 
 ### Integration tests
 
-The integration test suite (`tests/openai.integration.test.ts`) makes real API calls to OpenAI and is skipped by default. To run it:
+The integration test suite (`src/__tests__/openai.integration.test.ts`) makes real API calls to OpenAI and is skipped by default. To run it:
 
 ```bash
 OPENAI_API_KEY=sk-... pnpm test
