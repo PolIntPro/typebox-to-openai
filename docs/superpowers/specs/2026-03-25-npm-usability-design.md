@@ -4,14 +4,22 @@
 
 Make `typebox-to-openai` more usable as a public npm dependency by adding documentation, improving test coverage, enforcing code style standards, and explicitly handling unsupported schema types.
 
-## 1. brain-style Compliance & Type Renames
+## 1. brain-style Compliance, Exports & Type Renames
 
-Rename exported types to use `T`-prefixed PascalCase per brain-style TypeScript conventions:
+### Export all public types
+
+`TPromptSchema`, `Logger`, and `ConvertOptions` are currently **not exported** — they only appear in `.d.ts` because TypeScript includes types referenced by the exported function signature, but consumers cannot import them directly. Add the `export` keyword to all three type declarations.
+
+### Rename types
+
+Rename to use `T`-prefixed PascalCase per brain-style TypeScript conventions:
 
 - `Logger` → `TLogger`
 - `ConvertOptions` → `TConvertOptions`
 
-This is a **breaking change**. Bump version from `1.0.5` to `2.0.0` with no backward-compatibility aliases.
+### Semver bump
+
+Bump version from `1.0.5` to `2.0.0`. The major bump is driven primarily by Section 4 (new runtime errors for previously-silent inputs), not the type renames alone.
 
 All other naming already complies (file names are kebab-case, functions are camelCase, schema objects are PascalCase, internal types already use `T` prefix).
 
@@ -36,7 +44,8 @@ Move tests from top-level `tests/` to colocated `src/__tests__/`:
 - `tests/openai.integration.test.ts` → `src/__tests__/openai.integration.test.ts`
 - Delete the `tests/` directory
 - Update imports to reference source directly (`"../index"` instead of `"../"` resolving to `dist/`)
-- Update vitest/tsconfig config if needed
+- Update `tsconfig.json` to exclude `src/__tests__/` so test files are not compiled into `dist/` (add `"src/__tests__"` to the `exclude` array)
+- Verify vitest still discovers tests in the new location (should work by default since it finds `**/*.test.ts`)
 - Update CLAUDE.md to reflect new paths and remove "build before testing" note
 
 ## 4. Unsupported Type Errors
@@ -57,16 +66,22 @@ These are the JSON Schema constructs that OpenAI structured outputs support in s
 - **Value constraints:** `enum`, `const`
 - **Metadata:** `description`
 
+### Single-entry `allOf` (flatten)
+
+Single-entry `allOf` (e.g., `{ allOf: [{ $ref: "Foo" }] }`) is a common pattern emitted by Pydantic and other schema generators. OpenAI accepts it. The library should **flatten** single-entry `allOf` by unwrapping the sole element and recursing into it.
+
 ### Unsupported types (should throw)
 
-- `allOf` — intersections, not supported by OpenAI strict mode
-- `oneOf` — not used by TypeBox, ambiguous with `anyOf`
+- `allOf` with **multiple entries** — multi-way intersections, not supported by OpenAI strict mode
+- `oneOf` — not used by TypeBox, ambiguous with `anyOf`, not supported by OpenAI strict mode
 - `not` — negation, not supported by OpenAI strict mode
-- Leaf nodes with no recognizable structure (no `type`, no `$ref`, no `anyOf`, no `const`, no `enum`)
+- Array schemas with no `items` — OpenAI strict mode requires `items` for array types
+- Unrecognized leaf nodes — any object node that lacks all of: `type`, `$ref`, `anyOf`, `const`, `enum` (and is not caught by the `allOf`/`oneOf`/`not` checks above). Boolean schemas and non-object primitive schema values also throw.
 
 Error message format (consistent with existing null-only anyOf error):
 ```
 Unsupported schema type "allOf" at #/properties/foo
+Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum" at #/properties/bar
 ```
 
 ## 5. Test Coverage Improvements
@@ -81,10 +96,12 @@ All new tests go in `src/__tests__/index.test.ts`.
 
 ### B. Unsupported type error tests
 
-- `allOf` at root → throws with path `#`
+- Multi-entry `allOf` at root → throws with path `#`
+- Single-entry `allOf` → flattened, does not throw
 - `oneOf` nested in property → throws with correct deep path
 - `not` → throws with path
 - Leaf node with no `type`/`$ref`/`anyOf`/`const`/`enum` → throws
+- Array with no `items` → throws
 - Nested unsupported type → error includes correct JSON Pointer path
 
 ### C. TypeBox passthrough type tests
@@ -92,14 +109,14 @@ All new tests go in `src/__tests__/index.test.ts`.
 - `Type.Integer()` → produces `{type: "integer"}`, passes through correctly
 - `Type.Literal("foo")` → produces `{const: "foo"}`, passes through
 - `Type.Enum()` → produces `{enum: [...]}`, passes through
-- `Type.Optional()` inside objects → omitted from `required`, verify behavior
+- `Type.Optional()` inside objects → property exists in `properties` but is absent from `required` array
 
 ### D. Edge case tests
 
 - Deeply nested `$defs` (3+ levels) → all lifted to root
 - Empty object `Type.Object({})` → works
-- Array with no `items` → works
 - `$id` removal verified at all nesting levels
+- `$defs` key collision (two nested schemas define same key) → last-wins behavior documented via test
 - `$ref` with dots (`"Foo.Bar"`) and underscores (`"Foo_Bar"`) → rewritten correctly
 - `mergeTypeWithNull` when type is already an array → no duplicate `"null"`
 - `mergeTypeWithNull` when array already contains `"null"` → idempotent
