@@ -27,9 +27,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `camelCase` for variables, functions, methods, properties
 - Prefix unused variables with `_` to satisfy the linter
 
+## ESM import requirements
+
+All relative imports in `src/cli/` and `src/lib/` must end in `.js`. Directory imports must use the explicit index path (e.g. `schemata/index.js`).
+
 ## Documentation Sync
 
 - `README.md` — update when: public API surface changes, exported function signatures change, install instructions change
+- `docs/release-notes/upcoming.md` [Public-API] — User-facing release notes; plain language, no jargon
+- `docs/changelogs/upcoming.md` [Any-Code-Change] — Developer changelog with commit hash ranges
 
 ## Project Terminology
 
