@@ -169,7 +169,11 @@ function moveDefsToRoot(
     path: string[] = []
 ): TSchema {
     if (typeof schema !== "object" || schema === null) {
-        return schema
+        const formattedPath = formatPath(path)
+        logger.error("Unsupported schema: not an object", formattedPath)
+        throw new Error(
+            `Unsupported schema: expected an object node at ${formattedPath}`
+        )
     }
 
     const { schema: schemaWithoutDefs, defs } = removeDefs(schema)

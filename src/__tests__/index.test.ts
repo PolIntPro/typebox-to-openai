@@ -1,6 +1,7 @@
 import { Type } from "typebox"
 import { describe, test, expect } from "vitest"
 import type { TPromptSchema, TLogger, TConvertOptions } from "../index"
+import type { TSchema } from "typebox/type"
 import { ConvertToOpenAISchema } from "../index"
 
 const CyclicType = Type.Cyclic(
@@ -450,6 +451,12 @@ describe("index tests", () => {
 
         // Use optionsWithLogger to avoid unused variable lint error
         expect(optionsWithLogger.logger).toBeDefined()
+    })
+
+    test("Throws on boolean schema value", () => {
+        expect(() =>
+            ConvertToOpenAISchema(true as unknown as TSchema, "BoolSchema")
+        ).toThrow("Unsupported schema")
     })
 
     test("Does not mutate input schema", () => {
