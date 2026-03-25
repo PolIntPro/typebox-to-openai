@@ -8,21 +8,21 @@ type TAnyOf = {
     anyOf: TSchema[]
 }
 
-interface TPromptSchema {
+export interface TPromptSchema {
     name: string
     strict: true
     schema: TSchema
 }
 
-type Logger = {
+export type TLogger = {
     debug?: (...args: unknown[]) => void
     info?: (...args: unknown[]) => void
     warn?: (...args: unknown[]) => void
     error?: (...args: unknown[]) => void
 }
 
-type ConvertOptions = {
-    logger?: Logger
+export type TConvertOptions = {
+    logger?: TLogger
     debug?: boolean
 }
 
@@ -64,7 +64,7 @@ function IsRef(schema: TSchema): schema is TRef {
     return typeof schema === "object" && schema !== null && "$ref" in schema
 }
 
-function createLogger(options?: ConvertOptions): Required<Logger> {
+function createLogger(options?: TConvertOptions): Required<TLogger> {
     if (options?.logger) {
         return {
             debug: options.logger.debug ?? (() => undefined),
@@ -156,7 +156,7 @@ function removeDefs(schema: TSchema): {
 function moveDefsToRoot(
     schema: TSchema,
     allDefs: Record<string, TSchema>,
-    logger: Required<Logger>,
+    logger: Required<TLogger>,
     path: string[] = []
 ): TSchema {
     if (typeof schema !== "object" || schema === null) {
@@ -300,7 +300,7 @@ function moveDefsToRoot(
 export function ConvertToOpenAISchema(
     inputSchema: TSchema,
     schemaName: string,
-    options?: ConvertOptions
+    options?: TConvertOptions
 ): TPromptSchema {
     const logger = createLogger(options)
 

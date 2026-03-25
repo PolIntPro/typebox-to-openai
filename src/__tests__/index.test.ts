@@ -1,5 +1,6 @@
 import { Type } from "typebox"
 import { describe, test, expect } from "vitest"
+import type { TPromptSchema, TLogger, TConvertOptions } from "../index"
 import { ConvertToOpenAISchema } from "../index"
 
 const CyclicType = Type.Cyclic(
@@ -429,6 +430,26 @@ describe("index tests", () => {
         expect(ConvertToOpenAISchema(schema, "ExternalRefSchema")).toEqual(
             expectedResult
         )
+    })
+
+    test("Exported types are importable", () => {
+        const options: TConvertOptions = {
+            debug: true,
+        }
+        const logger: TLogger = {
+            debug: () => undefined,
+        }
+        const optionsWithLogger: TConvertOptions = { logger }
+        const result: TPromptSchema = ConvertToOpenAISchema(
+            SimpleSchema,
+            "SimpleSchema",
+            options
+        )
+        expect(result.name).toBe("SimpleSchema")
+        expect(result.strict).toBe(true)
+
+        // Use optionsWithLogger to avoid unused variable lint error
+        expect(optionsWithLogger.logger).toBeDefined()
     })
 
     test("Does not mutate input schema", () => {
