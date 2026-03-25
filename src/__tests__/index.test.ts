@@ -675,4 +675,68 @@ describe("index tests", () => {
             ConvertToOpenAISchema(SimpleSchema, "SimpleSchema", { logger })
         ).not.toThrow()
     })
+
+    test("Type.Integer() passes through as {type: 'integer'}", () => {
+        const schema = Type.Object(
+            { count: Type.Integer() },
+            { additionalProperties: false }
+        )
+        const result = ConvertToOpenAISchema(schema, "IntegerSchema")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        expect(props.count.type).toBe("integer")
+    })
+
+    test("Type.Literal() passes through as const value", () => {
+        const schema = Type.Object(
+            { status: Type.Literal("active") },
+            { additionalProperties: false }
+        )
+        const result = ConvertToOpenAISchema(schema, "LiteralSchema")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        expect(props.status.const).toBe("active")
+    })
+
+    test("Union of Literals produces anyOf with const values", () => {
+        const schema = Type.Object(
+            {
+                color: Type.Union([
+                    Type.Literal("red"),
+                    Type.Literal("green"),
+                    Type.Literal("blue"),
+                ]),
+            },
+            { additionalProperties: false }
+        )
+        const result = ConvertToOpenAISchema(schema, "UnionLiteralSchema")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        expect(props.color.anyOf).toBeDefined()
+    })
+
+    test("Type.Enum() passes through with enum array", () => {
+        enum Color { Red = "red", Green = "green", Blue = "blue" }
+        const schema = Type.Object(
+            { color: Type.Enum(Color) },
+            { additionalProperties: false }
+        )
+        const result = ConvertToOpenAISchema(schema, "EnumSchema")
+        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        // TypeBox Type.Enum() produces { enum: [...] } which passes through as-is
+        expect(props.color.enum).toBeDefined()
+    })
+
+    test("Type.Optional() omits property from required array", () => {
+        const schema = Type.Object(
+            {
+                name: Type.String(),
+                nickname: Type.Optional(Type.String()),
+            },
+            { additionalProperties: false }
+        )
+        const result = ConvertToOpenAISchema(schema, "OptionalSchema")
+        const s = result.schema as Record<string, unknown>
+        expect(s.required).toEqual(["name"])
+        const props = s.properties as Record<string, Record<string, unknown>>
+        expect(props.nickname).toBeDefined()
+        expect(props.nickname.type).toBe("string")
+    })
 })
