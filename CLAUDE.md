@@ -12,9 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 - `pnpm build` — compile TypeScript (outputs to `dist/`)
-- `pnpm lint` — ESLint with typescript-eslint
-- `pnpm prettify` — Prettier
+- `pnpm lint` — Prettier check + ESLint
+- `pnpm prettify` — Prettier (auto-fix)
+- `pnpm prettify:check` — Prettier (check only, no writes)
 - `pnpm test` — run all tests (vitest)
+- `pnpm check` — lint + test + build (full validation)
 - `pnpx vitest run src/__tests__/index.test.ts` — run a single test file
 - `pnpx vitest run -t "test name"` — run a single test case
 

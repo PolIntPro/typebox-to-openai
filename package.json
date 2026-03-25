@@ -16,10 +16,13 @@
     ],
     "scripts": {
         "test": "vitest run",
-        "lint": "eslint .",
-        "prettify": "pnpx prettier -w .",
+        "lint": "pnpm run prettify:check && eslint .",
+        "prettify": "prettier -w .",
+        "prettify:check": "prettier --check .",
         "build": "tsc",
-        "prepare": "pnpm run build"
+        "check": "pnpm run lint && pnpm run test && pnpm run build",
+        "prepare": "pnpm run build",
+        "prepublishOnly": "pnpm run check"
     },
     "type": "module",
     "keywords": [
