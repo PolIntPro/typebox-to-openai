@@ -1,6 +1,6 @@
 import { Type } from "typebox"
 import { describe, test, expect } from "vitest"
-import { ConvertToOpenAISchema } from "../"
+import { ConvertToOpenAISchema } from "../index"
 
 const CyclicType = Type.Cyclic(
     {

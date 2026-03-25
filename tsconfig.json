@@ -20,5 +20,5 @@
         "declarationMap": true // Generate declaration maps
     },
     "include": ["src/**/*.ts"],
-    "exclude": ["node_modules", "tests", "scripts"]
+    "exclude": ["node_modules", "src/__tests__", "scripts"]
 }

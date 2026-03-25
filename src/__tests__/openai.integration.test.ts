@@ -1,7 +1,7 @@
 import OpenAI from "openai"
 import { describe, expect, test } from "vitest"
 import { Type } from "typebox"
-import { ConvertToOpenAISchema } from "../"
+import { ConvertToOpenAISchema } from "../index"
 
 // Required env vars: OPENAI_API_KEY (required), OPENAI_BASE_URL (optional), OPENAI_MODEL (optional)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? ""
