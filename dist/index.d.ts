@@ -1,24 +1,24 @@
-import type { TSchema } from "typebox/type"
+import type { TSchema } from "typebox/type";
 /**
  * The wrapper object that OpenAI's structured output API expects.
  * Pass this to the `text.format` or `response_format` parameter
  * when calling the OpenAI API.
  */
 export interface TPromptSchema {
-    name: string
-    strict: true
-    schema: TSchema
+    name: string;
+    strict: true;
+    schema: TSchema;
 }
 /**
  * Custom logger interface for controlling diagnostic output.
  * All methods are optional — any omitted method is silently ignored.
  */
 export type TLogger = {
-    debug?: (...args: unknown[]) => void
-    info?: (...args: unknown[]) => void
-    warn?: (...args: unknown[]) => void
-    error?: (...args: unknown[]) => void
-}
+    debug?: (...args: unknown[]) => void;
+    info?: (...args: unknown[]) => void;
+    warn?: (...args: unknown[]) => void;
+    error?: (...args: unknown[]) => void;
+};
 /**
  * Options for {@link ConvertToOpenAISchema}.
  *
@@ -26,9 +26,9 @@ export type TLogger = {
  * @property debug - When `true`, logs diagnostics to the console.
  */
 export type TConvertOptions = {
-    logger?: TLogger
-    debug?: boolean
-}
+    logger?: TLogger;
+    debug?: boolean;
+};
 /**
  * Convert a TypeBox schema into an OpenAI Structured Output-compatible
  * prompt schema.
@@ -56,9 +56,5 @@ export type TConvertOptions = {
  *   - `anyOf` unions with only null branches
  *   - Duplicate `$defs` keys across nested schemas
  */
-export declare function ConvertToOpenAISchema(
-    inputSchema: TSchema,
-    schemaName: string,
-    options?: TConvertOptions
-): TPromptSchema
+export declare function ConvertToOpenAISchema(inputSchema: TSchema, schemaName: string, options?: TConvertOptions): TPromptSchema;
 //# sourceMappingURL=index.d.ts.map

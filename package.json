@@ -7,11 +7,12 @@
     "exports": {
         ".": {
             "import": "./dist/index.js",
-            "require": "./dist/index.cjs"
+            "types": "./dist/index.d.ts"
         }
     },
     "files": [
-        "dist"
+        "dist",
+        "!dist/tsconfig.tsbuildinfo"
     ],
     "scripts": {
         "test": "vitest run",
@@ -49,9 +50,8 @@
         "typescript-eslint": "^8.53.1",
         "vitest": "^3.2.4"
     },
-    "dependencies": {
-        "commander": "^14.0.2",
-        "typebox": "^1.0.79"
+    "peerDependencies": {
+        "typebox": "^1.1.6"
     },
     "packageManager": "pnpm@10.23.0"
 }
