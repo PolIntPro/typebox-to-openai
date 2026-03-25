@@ -27,11 +27,11 @@ All other naming already complies (file names are kebab-case, functions are came
 
 Add JSDoc docstrings to all exported symbols in `src/index.ts`:
 
-| Symbol | What to document |
-|--------|-----------------|
-| `TPromptSchema` | The `{ name, strict: true, schema }` wrapper object that OpenAI's structured output API expects |
-| `TLogger` | Optional logger interface with `debug`, `info`, `warn`, `error` methods |
-| `TConvertOptions` | Options object: `logger` (custom logger) and `debug` (enable console logging) |
+| Symbol                    | What to document                                                                                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TPromptSchema`           | The `{ name, strict: true, schema }` wrapper object that OpenAI's structured output API expects                                                                                                                                           |
+| `TLogger`                 | Optional logger interface with `debug`, `info`, `warn`, `error` methods                                                                                                                                                                   |
+| `TConvertOptions`         | Options object: `logger` (custom logger) and `debug` (enable console logging)                                                                                                                                                             |
 | `ConvertToOpenAISchema()` | Parameters, return type, transformations performed ($defs lifting, $ref normalization, $id removal, nullable object merging, single-entry `allOf` flattening), when it throws (unsupported types, null-only unions, arrays without items) |
 
 Internal helper functions do **not** get JSDoc.
@@ -63,10 +63,10 @@ New checks are inserted into `moveDefsToRoot` in this order, after `$defs` extra
 2. `allOf` check → flatten single-entry, throw on multi-entry
 3. `oneOf` check → throw
 4. `not` check → throw
-5. *(existing)* `anyOf` → existing handling
-6. *(existing)* `$ref` → existing handling
-7. *(existing)* `object` → existing handling
-8. *(existing)* `array` → existing handling, **plus throw if no `items`**
+5. _(existing)_ `anyOf` → existing handling
+6. _(existing)_ `$ref` → existing handling
+7. _(existing)_ `object` → existing handling
+8. _(existing)_ `array` → existing handling, **plus throw if no `items`**
 9. Fallthrough → **change from silent passthrough to**: allow if node has `type`, `const`, or `enum`; otherwise throw
 
 ### Supported types (handled or pass-through)
@@ -93,6 +93,7 @@ Single-entry `allOf` (e.g., `{ allOf: [{ $ref: "Foo" }] }`) is a common pattern 
 - Unrecognized leaf nodes — any object node that lacks all of: `type`, `$ref`, `anyOf`, `const`, `enum` (and is not caught by the `allOf`/`oneOf`/`not` checks above). Boolean schemas and non-object primitive schema values also throw.
 
 Error message format (consistent with existing null-only anyOf error):
+
 ```
 Unsupported schema type "allOf" at #/properties/foo
 Unsupported schema: array type requires "items" at #/properties/tags

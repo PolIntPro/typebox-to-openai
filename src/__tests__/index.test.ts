@@ -462,8 +462,18 @@ describe("index tests", () => {
     test("Throws on multi-entry allOf", () => {
         const schema = {
             allOf: [
-                { type: "object", properties: { a: { type: "string" } }, required: ["a"], additionalProperties: false },
-                { type: "object", properties: { b: { type: "number" } }, required: ["b"], additionalProperties: false },
+                {
+                    type: "object",
+                    properties: { a: { type: "string" } },
+                    required: ["a"],
+                    additionalProperties: false,
+                },
+                {
+                    type: "object",
+                    properties: { b: { type: "number" } },
+                    required: ["b"],
+                    additionalProperties: false,
+                },
             ],
         }
         expect(() => ConvertToOpenAISchema(schema, "AllOfSchema")).toThrow(
@@ -491,7 +501,14 @@ describe("index tests", () => {
             type: "object",
             properties: {
                 child: {
-                    allOf: [{ type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: false }],
+                    allOf: [
+                        {
+                            type: "object",
+                            properties: { id: { type: "string" } },
+                            required: ["id"],
+                            additionalProperties: false,
+                        },
+                    ],
                     description: "A child object",
                 },
             },
@@ -499,7 +516,8 @@ describe("index tests", () => {
             additionalProperties: false,
         }
         const result = ConvertToOpenAISchema(schema, "AllOfSibling")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         expect(props.child.description).toBe("A child object")
         expect(props.child.type).toBe("object")
         expect(props.child.allOf).toBeUndefined()
@@ -682,7 +700,8 @@ describe("index tests", () => {
             { additionalProperties: false }
         )
         const result = ConvertToOpenAISchema(schema, "IntegerSchema")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         expect(props.count.type).toBe("integer")
     })
 
@@ -692,7 +711,8 @@ describe("index tests", () => {
             { additionalProperties: false }
         )
         const result = ConvertToOpenAISchema(schema, "LiteralSchema")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         expect(props.status.const).toBe("active")
     })
 
@@ -708,18 +728,24 @@ describe("index tests", () => {
             { additionalProperties: false }
         )
         const result = ConvertToOpenAISchema(schema, "UnionLiteralSchema")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         expect(props.color.anyOf).toBeDefined()
     })
 
     test("Type.Enum() passes through with enum array", () => {
-        enum Color { Red = "red", Green = "green", Blue = "blue" }
+        enum Color {
+            Red = "red",
+            Green = "green",
+            Blue = "blue",
+        }
         const schema = Type.Object(
             { color: Type.Enum(Color) },
             { additionalProperties: false }
         )
         const result = ConvertToOpenAISchema(schema, "EnumSchema")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         // TypeBox Type.Enum() produces { enum: [...] } which passes through as-is
         expect(props.color.enum).toBeDefined()
     })
@@ -820,9 +846,12 @@ describe("index tests", () => {
         const result = ConvertToOpenAISchema(schema, "IdRemoval")
         const s = result.schema as Record<string, unknown>
         expect(s.$id).toBeUndefined()
-        const child = (s.properties as Record<string, Record<string, unknown>>).child
+        const child = (s.properties as Record<string, Record<string, unknown>>)
+            .child
         expect(child.$id).toBeUndefined()
-        const value = (child.properties as Record<string, Record<string, unknown>>).value
+        const value = (
+            child.properties as Record<string, Record<string, unknown>>
+        ).value
         expect(value.$id).toBeUndefined()
     })
 
@@ -837,7 +866,8 @@ describe("index tests", () => {
             additionalProperties: false,
         }
         const result = ConvertToOpenAISchema(schema, "SpecialRefs")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         expect(props.dotRef.$ref).toBe("#/$defs/Foo.Bar")
         expect(props.underRef.$ref).toBe("#/$defs/Foo_Bar")
     })
@@ -862,7 +892,8 @@ describe("index tests", () => {
             additionalProperties: false,
         }
         const result = ConvertToOpenAISchema(schema, "NullIdempotent")
-        const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+        const props = (result.schema as Record<string, unknown>)
+            .properties as Record<string, Record<string, unknown>>
         const nullCount = (props.maybe.type as string[]).filter(
             (t) => t === "null"
         ).length

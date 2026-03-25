@@ -14,22 +14,23 @@
 
 ## File Map
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `src/index.ts` | Modify | Type renames, exports, JSDoc, unsupported type errors, `allOf` flattening, `$defs` collision detection |
-| `src/__tests__/index.test.ts` | Create (move from `tests/index.test.ts`) | All unit tests |
-| `src/__tests__/openai.integration.test.ts` | Create (move from `tests/openai.integration.test.ts`) | Integration tests |
-| `tests/` | Delete | Replaced by `src/__tests__/` |
-| `tsconfig.json` | Modify | Exclude `src/__tests__` from compilation |
-| `package.json` | Modify | Version bump, keywords |
-| `CLAUDE.md` | Modify | Updated paths, OpenAI reference |
-| `README.md` | Modify | Supported/unsupported types, renamed types |
+| File                                       | Action                                                | Responsibility                                                                                         |
+| ------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/index.ts`                             | Modify                                                | Type renames, exports, JSDoc, unsupported type errors, `allOf` flattening, `$defs` collision detection |
+| `src/__tests__/index.test.ts`              | Create (move from `tests/index.test.ts`)              | All unit tests                                                                                         |
+| `src/__tests__/openai.integration.test.ts` | Create (move from `tests/openai.integration.test.ts`) | Integration tests                                                                                      |
+| `tests/`                                   | Delete                                                | Replaced by `src/__tests__/`                                                                           |
+| `tsconfig.json`                            | Modify                                                | Exclude `src/__tests__` from compilation                                                               |
+| `package.json`                             | Modify                                                | Version bump, keywords                                                                                 |
+| `CLAUDE.md`                                | Modify                                                | Updated paths, OpenAI reference                                                                        |
+| `README.md`                                | Modify                                                | Supported/unsupported types, renamed types                                                             |
 
 ---
 
 ### Task 1: Move tests to `src/__tests__/` and update config
 
 **Files:**
+
 - Create: `src/__tests__/index.test.ts` (moved from `tests/index.test.ts`)
 - Create: `src/__tests__/openai.integration.test.ts` (moved from `tests/openai.integration.test.ts`)
 - Delete: `tests/index.test.ts`, `tests/openai.integration.test.ts`, `tests/` directory
@@ -46,6 +47,7 @@ git mv tests/openai.integration.test.ts src/__tests__/openai.integration.test.ts
 - [ ] **Step 2: Update import in `src/__tests__/index.test.ts`**
 
 Change line 3:
+
 ```typescript
 // Before:
 import { ConvertToOpenAISchema } from "../"
@@ -56,6 +58,7 @@ import { ConvertToOpenAISchema } from "../index"
 - [ ] **Step 3: Update import in `src/__tests__/openai.integration.test.ts`**
 
 Change line 4:
+
 ```typescript
 // Before:
 import { ConvertToOpenAISchema } from "../"
@@ -66,6 +69,7 @@ import { ConvertToOpenAISchema } from "../index"
 - [ ] **Step 4: Update `tsconfig.json` exclude array**
 
 Change line 23:
+
 ```json
 // Before:
 "exclude": ["node_modules", "tests", "scripts"]
@@ -98,6 +102,7 @@ git add src/__tests__/ tsconfig.json && git commit -m "Move tests to src/__tests
 ### Task 2: Type renames and exports (brain-style compliance)
 
 **Files:**
+
 - Modify: `src/index.ts`
 
 - [ ] **Step 1: Write failing test — import renamed types**
@@ -220,6 +225,7 @@ git add src/index.ts src/__tests__/index.test.ts && git commit -m "Rename Logger
 ### Task 3: Add JSDoc documentation
 
 **Files:**
+
 - Modify: `src/index.ts`
 
 - [ ] **Step 1: Add JSDoc to `TPromptSchema`**
@@ -307,6 +313,7 @@ git add src/index.ts && git commit -m "Add JSDoc documentation to all exported s
 ### Task 4: Unsupported type errors — non-object/boolean schemas
 
 **Files:**
+
 - Modify: `src/index.ts`
 - Modify: `src/__tests__/index.test.ts`
 
@@ -383,6 +390,7 @@ git add src/index.ts src/__tests__/index.test.ts && git commit -m "Throw on non-
 ### Task 5: Unsupported type errors — `allOf`, `oneOf`, `not`
 
 **Files:**
+
 - Modify: `src/index.ts`
 - Modify: `src/__tests__/index.test.ts`
 
@@ -394,8 +402,18 @@ Add to `src/__tests__/index.test.ts`:
 test("Throws on multi-entry allOf", () => {
     const schema = {
         allOf: [
-            { type: "object", properties: { a: { type: "string" } }, required: ["a"], additionalProperties: false },
-            { type: "object", properties: { b: { type: "number" } }, required: ["b"], additionalProperties: false },
+            {
+                type: "object",
+                properties: { a: { type: "string" } },
+                required: ["a"],
+                additionalProperties: false,
+            },
+            {
+                type: "object",
+                properties: { b: { type: "number" } },
+                required: ["b"],
+                additionalProperties: false,
+            },
         ],
     }
     expect(() => ConvertToOpenAISchema(schema, "AllOfSchema")).toThrow(
@@ -423,7 +441,14 @@ test("Flattens single-entry allOf with sibling keywords", () => {
         type: "object",
         properties: {
             child: {
-                allOf: [{ type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: false }],
+                allOf: [
+                    {
+                        type: "object",
+                        properties: { id: { type: "string" } },
+                        required: ["id"],
+                        additionalProperties: false,
+                    },
+                ],
                 description: "A child object",
             },
         },
@@ -431,7 +456,8 @@ test("Flattens single-entry allOf with sibling keywords", () => {
         additionalProperties: false,
     }
     const result = ConvertToOpenAISchema(schema, "AllOfSibling")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     expect(props.child.description).toBe("A child object")
     expect(props.child.type).toBe("object")
     expect(props.child.allOf).toBeUndefined()
@@ -505,11 +531,7 @@ function IsOneOf(schema: TSchema): schema is TSchema & { oneOf: TSchema[] } {
 }
 
 function IsNot(schema: TSchema): schema is TSchema & { not: TSchema } {
-    return (
-        typeof schema === "object" &&
-        schema !== null &&
-        "not" in schema
-    )
+    return typeof schema === "object" && schema !== null && "not" in schema
 }
 ```
 
@@ -520,7 +542,10 @@ Insert these checks after the `$defs` extraction block (after the `if (defs) { .
 ```typescript
 if (IsAllOf(schemaWithoutDefs)) {
     if (schemaWithoutDefs.allOf.length === 1) {
-        const { allOf: _allOf, ...siblings } = schemaWithoutDefs as Record<string, unknown>
+        const { allOf: _allOf, ...siblings } = schemaWithoutDefs as Record<
+            string,
+            unknown
+        >
         const unwrapped = {
             ...schemaWithoutDefs.allOf[0],
             ...siblings,
@@ -528,26 +553,20 @@ if (IsAllOf(schemaWithoutDefs)) {
         return moveDefsToRoot(unwrapped, allDefs, logger, path)
     }
     const formattedPath = formatPath(path)
-    logger.error("Unsupported schema type \"allOf\"", formattedPath)
-    throw new Error(
-        `Unsupported schema type "allOf" at ${formattedPath}`
-    )
+    logger.error('Unsupported schema type "allOf"', formattedPath)
+    throw new Error(`Unsupported schema type "allOf" at ${formattedPath}`)
 }
 
 if (IsOneOf(schemaWithoutDefs)) {
     const formattedPath = formatPath(path)
-    logger.error("Unsupported schema type \"oneOf\"", formattedPath)
-    throw new Error(
-        `Unsupported schema type "oneOf" at ${formattedPath}`
-    )
+    logger.error('Unsupported schema type "oneOf"', formattedPath)
+    throw new Error(`Unsupported schema type "oneOf" at ${formattedPath}`)
 }
 
 if (IsNot(schemaWithoutDefs)) {
     const formattedPath = formatPath(path)
-    logger.error("Unsupported schema type \"not\"", formattedPath)
-    throw new Error(
-        `Unsupported schema type "not" at ${formattedPath}`
-    )
+    logger.error('Unsupported schema type "not"', formattedPath)
+    throw new Error(`Unsupported schema type "not" at ${formattedPath}`)
 }
 ```
 
@@ -570,6 +589,7 @@ git add src/index.ts src/__tests__/index.test.ts && git commit -m "Add allOf fla
 ### Task 6: Unsupported type errors — array without `items`, unrecognized leaf nodes, `$defs` collision
 
 **Files:**
+
 - Modify: `src/index.ts`
 - Modify: `src/__tests__/index.test.ts`
 
@@ -720,7 +740,7 @@ const hasEnum = "enum" in schemaWithoutDefs
 if (!hasType && !hasConst && !hasEnum) {
     const formattedPath = formatPath(path)
     logger.error(
-        "Unsupported schema: missing \"type\", \"$ref\", \"anyOf\", \"const\", or \"enum\"",
+        'Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum"',
         formattedPath
     )
     throw new Error(
@@ -752,6 +772,7 @@ git add src/index.ts src/__tests__/index.test.ts && git commit -m "Throw on arra
 ### Task 7: Options/logging tests
 
 **Files:**
+
 - Modify: `src/__tests__/index.test.ts`
 
 - [ ] **Step 1: Write options/logging tests**
@@ -830,6 +851,7 @@ git add src/__tests__/index.test.ts && git commit -m "Add options and logging te
 ### Task 8: TypeBox passthrough type tests
 
 **Files:**
+
 - Modify: `src/__tests__/index.test.ts`
 
 - [ ] **Step 1: Write passthrough tests**
@@ -843,7 +865,8 @@ test("Type.Integer() passes through as {type: 'integer'}", () => {
         { additionalProperties: false }
     )
     const result = ConvertToOpenAISchema(schema, "IntegerSchema")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     expect(props.count.type).toBe("integer")
 })
 
@@ -853,7 +876,8 @@ test("Type.Literal() passes through as const value", () => {
         { additionalProperties: false }
     )
     const result = ConvertToOpenAISchema(schema, "LiteralSchema")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     expect(props.status.const).toBe("active")
 })
 
@@ -869,19 +893,25 @@ test("Union of Literals produces anyOf with const values", () => {
         { additionalProperties: false }
     )
     const result = ConvertToOpenAISchema(schema, "UnionLiteralSchema")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     // TypeBox Union of Literals produces anyOf with const values
     expect(props.color.anyOf).toBeDefined()
 })
 
 test("Type.Enum() passes through with enum array", () => {
-    enum Color { Red = "red", Green = "green", Blue = "blue" }
+    enum Color {
+        Red = "red",
+        Green = "green",
+        Blue = "blue",
+    }
     const schema = Type.Object(
         { color: Type.Enum(Color) },
         { additionalProperties: false }
     )
     const result = ConvertToOpenAISchema(schema, "EnumSchema")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     // TypeBox Type.Enum() produces anyOf with const values
     expect(props.color.anyOf).toBeDefined()
 })
@@ -933,6 +963,7 @@ git add src/__tests__/index.test.ts && git commit -m "Add passthrough type tests
 ### Task 9: Edge case tests
 
 **Files:**
+
 - Modify: `src/__tests__/index.test.ts`
 
 - [ ] **Step 1: Write edge case tests**
@@ -1020,9 +1051,11 @@ test("Removes $id at all nesting levels", () => {
     const result = ConvertToOpenAISchema(schema, "IdRemoval")
     const s = result.schema as Record<string, unknown>
     expect(s.$id).toBeUndefined()
-    const child = (s.properties as Record<string, Record<string, unknown>>).child
+    const child = (s.properties as Record<string, Record<string, unknown>>)
+        .child
     expect(child.$id).toBeUndefined()
-    const value = (child.properties as Record<string, Record<string, unknown>>).value
+    const value = (child.properties as Record<string, Record<string, unknown>>)
+        .value
     expect(value.$id).toBeUndefined()
 })
 
@@ -1037,7 +1070,8 @@ test("$ref with dots and underscores are rewritten", () => {
         additionalProperties: false,
     }
     const result = ConvertToOpenAISchema(schema, "SpecialRefs")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     expect(props.dotRef.$ref).toBe("#/$defs/Foo.Bar")
     expect(props.underRef.$ref).toBe("#/$defs/Foo_Bar")
 })
@@ -1062,7 +1096,8 @@ test("mergeTypeWithNull does not duplicate null in array type", () => {
         additionalProperties: false,
     }
     const result = ConvertToOpenAISchema(schema, "NullIdempotent")
-    const props = (result.schema as Record<string, unknown>).properties as Record<string, Record<string, unknown>>
+    const props = (result.schema as Record<string, unknown>)
+        .properties as Record<string, Record<string, unknown>>
     const nullCount = (props.maybe.type as string[]).filter(
         (t) => t === "null"
     ).length
@@ -1103,6 +1138,7 @@ git add src/__tests__/index.test.ts && git commit -m "Add edge case tests for de
 ### Task 10: Update CLAUDE.md
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Update Generic Instructions**
@@ -1139,6 +1175,7 @@ git add CLAUDE.md && git commit -m "Update CLAUDE.md for new test paths and add 
 ### Task 11: Update README.md
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Update the API section with renamed types**
@@ -1158,20 +1195,20 @@ Add after the "Schema transformations" section:
 
 The following JSON Schema constructs are supported and compatible with OpenAI's strict mode:
 
-| Construct | Example | Notes |
-|-----------|---------|-------|
-| `string` | `Type.String()` | Supports `format` (e.g., `"uuid"`) |
-| `number` | `Type.Number()` | |
-| `integer` | `Type.Integer()` | |
-| `boolean` | `Type.Boolean()` | |
-| `null` | `Type.Null()` | |
-| `object` | `Type.Object(...)` | Must include `additionalProperties: false` for OpenAI strict mode |
-| `array` | `Type.Array(...)` | Must include `items` |
-| `anyOf` | `Type.Union([...])` | Nullable object unions are merged automatically |
-| `$ref` / `$defs` | `Type.Ref(...)` / `Type.Cyclic(...)` | Bare refs rewritten to `#/$defs/...` |
-| `const` | `Type.Literal(...)` | |
-| `enum` | Via `anyOf` of literals | TypeBox emits `anyOf` with `const` entries |
-| Single-entry `allOf` | Common in Pydantic output | Automatically flattened |
+| Construct            | Example                              | Notes                                                             |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------------- |
+| `string`             | `Type.String()`                      | Supports `format` (e.g., `"uuid"`)                                |
+| `number`             | `Type.Number()`                      |                                                                   |
+| `integer`            | `Type.Integer()`                     |                                                                   |
+| `boolean`            | `Type.Boolean()`                     |                                                                   |
+| `null`               | `Type.Null()`                        |                                                                   |
+| `object`             | `Type.Object(...)`                   | Must include `additionalProperties: false` for OpenAI strict mode |
+| `array`              | `Type.Array(...)`                    | Must include `items`                                              |
+| `anyOf`              | `Type.Union([...])`                  | Nullable object unions are merged automatically                   |
+| `$ref` / `$defs`     | `Type.Ref(...)` / `Type.Cyclic(...)` | Bare refs rewritten to `#/$defs/...`                              |
+| `const`              | `Type.Literal(...)`                  |                                                                   |
+| `enum`               | Via `anyOf` of literals              | TypeBox emits `anyOf` with `const` entries                        |
+| Single-entry `allOf` | Common in Pydantic output            | Automatically flattened                                           |
 ```
 
 - [ ] **Step 3: Add "Unsupported Schema Types" section**
@@ -1183,15 +1220,15 @@ Add after "Supported schema types":
 
 The following constructs will cause `ConvertToOpenAISchema` to throw an error, since they are not supported by OpenAI's structured output strict mode:
 
-| Construct | Error |
-|-----------|-------|
-| Multi-entry `allOf` | `Unsupported schema type "allOf"` |
-| `oneOf` | `Unsupported schema type "oneOf"` |
-| `not` | `Unsupported schema type "not"` |
-| Array without `items` | `Unsupported schema: array type requires "items"` |
+| Construct                                    | Error                                             |
+| -------------------------------------------- | ------------------------------------------------- |
+| Multi-entry `allOf`                          | `Unsupported schema type "allOf"`                 |
+| `oneOf`                                      | `Unsupported schema type "oneOf"`                 |
+| `not`                                        | `Unsupported schema type "not"`                   |
+| Array without `items`                        | `Unsupported schema: array type requires "items"` |
 | Missing `type`/`$ref`/`anyOf`/`const`/`enum` | `Unsupported schema: missing "type", "$ref", ...` |
-| Duplicate `$defs` keys | `Duplicate $defs key "..."` |
-| `anyOf` with only null branches | `Unsupported anyOf union with only null branches` |
+| Duplicate `$defs` keys                       | `Duplicate $defs key "..."`                       |
+| `anyOf` with only null branches              | `Unsupported anyOf union with only null branches` |
 ```
 
 - [ ] **Step 4: Add single-entry `allOf` flattening to the transformations list**
@@ -1221,6 +1258,7 @@ git add README.md && git commit -m "Update README with supported/unsupported typ
 ### Task 12: Version bump and final verification
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Bump version and add keywords**

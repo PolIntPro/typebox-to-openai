@@ -31,6 +31,25 @@ function IsArray(schema) {
 function IsRef(schema) {
     return typeof schema === "object" && schema !== null && "$ref" in schema
 }
+function IsAllOf(schema) {
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "allOf" in schema &&
+        Array.isArray(schema.allOf)
+    )
+}
+function IsOneOf(schema) {
+    return (
+        typeof schema === "object" &&
+        schema !== null &&
+        "oneOf" in schema &&
+        Array.isArray(schema.oneOf)
+    )
+}
+function IsNot(schema) {
+    return typeof schema === "object" && schema !== null && "not" in schema
+}
 function createLogger(options) {
     if (options?.logger) {
         return {
@@ -99,19 +118,26 @@ function removeDefs(schema) {
     const { $defs: _removed, ...schemaWithoutDefs } = schema
     return { schema: schemaWithoutDefs, defs }
 }
-/**
- *
- * @param schema
- * @returns A copy of the schema object that was passed with any refs changed to reference
- * the new location of where refs are defined and with all $defs removed
- */
 function moveDefsToRoot(schema, allDefs, logger, path = []) {
     if (typeof schema !== "object" || schema === null) {
-        return schema
+        const formattedPath = formatPath(path)
+        logger.error("Unsupported schema: not an object", formattedPath)
+        throw new Error(
+            `Unsupported schema: expected an object node at ${formattedPath}`
+        )
     }
     const { schema: schemaWithoutDefs, defs } = removeDefs(schema)
     if (defs) {
         for (const [schemaId, defSchema] of Object.entries(defs)) {
+            if (schemaId in allDefs) {
+                const formattedPath = formatPath(
+                    path.concat(["$defs", schemaId])
+                )
+                logger.error(`Duplicate $defs key "${schemaId}"`, formattedPath)
+                throw new Error(
+                    `Duplicate $defs key "${schemaId}" at ${formattedPath}`
+                )
+            }
             allDefs[schemaId] = moveDefsToRoot(
                 defSchema,
                 allDefs,
@@ -119,6 +145,29 @@ function moveDefsToRoot(schema, allDefs, logger, path = []) {
                 path.concat(["$defs", schemaId])
             )
         }
+    }
+    if (IsAllOf(schemaWithoutDefs)) {
+        if (schemaWithoutDefs.allOf.length === 1) {
+            const { allOf: _allOf, ...siblings } = schemaWithoutDefs
+            const unwrapped = {
+                ...schemaWithoutDefs.allOf[0],
+                ...siblings,
+            }
+            return moveDefsToRoot(unwrapped, allDefs, logger, path)
+        }
+        const formattedPath = formatPath(path)
+        logger.error('Unsupported schema type "allOf"', formattedPath)
+        throw new Error(`Unsupported schema type "allOf" at ${formattedPath}`)
+    }
+    if (IsOneOf(schemaWithoutDefs)) {
+        const formattedPath = formatPath(path)
+        logger.error('Unsupported schema type "oneOf"', formattedPath)
+        throw new Error(`Unsupported schema type "oneOf" at ${formattedPath}`)
+    }
+    if (IsNot(schemaWithoutDefs)) {
+        const formattedPath = formatPath(path)
+        logger.error('Unsupported schema type "not"', formattedPath)
+        throw new Error(`Unsupported schema type "not" at ${formattedPath}`)
     }
     if (IsAnyOf(schemaWithoutDefs)) {
         const anyOfVals = schemaWithoutDefs.anyOf.map((val, index) =>
@@ -204,6 +253,16 @@ function moveDefsToRoot(schema, allDefs, logger, path = []) {
     }
     if (IsArray(schemaWithoutDefs)) {
         const items = schemaWithoutDefs.items
+        if (items === undefined || items === null) {
+            const formattedPath = formatPath(path)
+            logger.error(
+                'Unsupported schema: array type requires "items"',
+                formattedPath
+            )
+            throw new Error(
+                `Unsupported schema: array type requires "items" at ${formattedPath}`
+            )
+        }
         const nextItems = Array.isArray(items)
             ? items.map((item, index) =>
                   moveDefsToRoot(
@@ -222,10 +281,50 @@ function moveDefsToRoot(schema, allDefs, logger, path = []) {
                 : { ...schemaWithoutDefs }
         return withClearedId(schemaWithoutDefs, nextSchema)
     }
+    const hasType = "type" in schemaWithoutDefs
+    const hasConst = "const" in schemaWithoutDefs
+    const hasEnum = "enum" in schemaWithoutDefs
+    if (!hasType && !hasConst && !hasEnum) {
+        const formattedPath = formatPath(path)
+        logger.error(
+            'Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum"',
+            formattedPath
+        )
+        throw new Error(
+            `Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum" at ${formattedPath}`
+        )
+    }
     return withClearedId(schemaWithoutDefs, {
         ...schemaWithoutDefs,
     })
 }
+/**
+ * Convert a TypeBox schema into an OpenAI Structured Output-compatible
+ * prompt schema.
+ *
+ * Transformations applied:
+ * - **$defs lifting** — nested `$defs` are collected and moved to the root.
+ * - **$ref normalization** — bare refs like `"Child"` are rewritten to `"#/$defs/Child"`.
+ *   External, absolute, and JSON Pointer refs are left unchanged.
+ * - **$id removal** — `$id` fields are stripped at all levels.
+ * - **Nullable object merging** — `anyOf` with one object + one null branch becomes
+ *   `{ type: ["object", "null"], ... }`.
+ * - **Single-entry allOf flattening** — `{ allOf: [schema] }` is unwrapped to `schema`.
+ * - **Immutability** — the input schema is never mutated.
+ *
+ * @param inputSchema - The TypeBox (or raw JSON Schema) schema to convert.
+ * @param schemaName - The name for the prompt schema (used by OpenAI).
+ * @param options - Optional logging configuration.
+ * @returns A {@link TPromptSchema} ready to pass to the OpenAI API.
+ *
+ * @throws When the schema contains unsupported constructs:
+ *   - Multi-entry `allOf` (intersections)
+ *   - `oneOf` or `not`
+ *   - Array types without `items`
+ *   - Nodes missing `type`, `$ref`, `anyOf`, `const`, or `enum`
+ *   - `anyOf` unions with only null branches
+ *   - Duplicate `$defs` keys across nested schemas
+ */
 export function ConvertToOpenAISchema(inputSchema, schemaName, options) {
     const logger = createLogger(options)
     const PromptSchema = {
