@@ -361,9 +361,7 @@ function moveDefsToRoot(
                       path.concat(["items", String(index)])
                   )
               )
-            : items
-              ? moveDefsToRoot(items, allDefs, logger, path.concat(["items"]))
-              : items
+            : moveDefsToRoot(items, allDefs, logger, path.concat(["items"]))
 
         const nextSchema =
             items !== undefined
