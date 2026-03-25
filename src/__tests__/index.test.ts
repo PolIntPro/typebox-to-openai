@@ -537,6 +537,79 @@ describe("index tests", () => {
         )
     })
 
+    test("Throws on array without items", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                tags: { type: "array" },
+            },
+            required: ["tags"],
+            additionalProperties: false,
+        }
+        expect(() => ConvertToOpenAISchema(schema, "NoItemsArray")).toThrow(
+            'Unsupported schema: array type requires "items" at #/properties/tags'
+        )
+    })
+
+    test("Throws on unrecognized leaf node", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                mystery: { description: "no type here" },
+            },
+            required: ["mystery"],
+            additionalProperties: false,
+        }
+        expect(() => ConvertToOpenAISchema(schema, "LeafSchema")).toThrow(
+            'Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum" at #/properties/mystery'
+        )
+    })
+
+    test("Throws on $defs key collision", () => {
+        const schema = {
+            type: "object",
+            properties: {
+                a: {
+                    type: "object",
+                    properties: {
+                        id: { type: "string" },
+                    },
+                    required: ["id"],
+                    additionalProperties: false,
+                    $defs: {
+                        Shared: {
+                            type: "object",
+                            properties: { x: { type: "string" } },
+                            required: ["x"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
+                b: {
+                    type: "object",
+                    properties: {
+                        id: { type: "number" },
+                    },
+                    required: ["id"],
+                    additionalProperties: false,
+                    $defs: {
+                        Shared: {
+                            type: "object",
+                            properties: { y: { type: "number" } },
+                            required: ["y"],
+                            additionalProperties: false,
+                        },
+                    },
+                },
+            },
+            required: ["a", "b"],
+            additionalProperties: false,
+        }
+        expect(() => ConvertToOpenAISchema(schema, "CollisionSchema")).toThrow(
+            'Duplicate $defs key "Shared"'
+        )
+    })
+
     test("Does not mutate input schema", () => {
         const inputSchema = {
             type: "object",

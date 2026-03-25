@@ -206,6 +206,18 @@ function moveDefsToRoot(
 
     if (defs) {
         for (const [schemaId, defSchema] of Object.entries(defs)) {
+            if (schemaId in allDefs) {
+                const formattedPath = formatPath(
+                    path.concat(["$defs", schemaId])
+                )
+                logger.error(
+                    `Duplicate $defs key "${schemaId}"`,
+                    formattedPath
+                )
+                throw new Error(
+                    `Duplicate $defs key "${schemaId}" at ${formattedPath}`
+                )
+            }
             allDefs[schemaId] = moveDefsToRoot(
                 defSchema,
                 allDefs,
@@ -342,6 +354,16 @@ function moveDefsToRoot(
 
     if (IsArray(schemaWithoutDefs)) {
         const items = schemaWithoutDefs.items
+        if (items === undefined || items === null) {
+            const formattedPath = formatPath(path)
+            logger.error(
+                'Unsupported schema: array type requires "items"',
+                formattedPath
+            )
+            throw new Error(
+                `Unsupported schema: array type requires "items" at ${formattedPath}`
+            )
+        }
         const nextItems = Array.isArray(items)
             ? items.map((item, index) =>
                   moveDefsToRoot(
@@ -361,6 +383,20 @@ function moveDefsToRoot(
                 : { ...schemaWithoutDefs }
 
         return withClearedId(schemaWithoutDefs, nextSchema) as TSchema
+    }
+
+    const hasType = "type" in schemaWithoutDefs
+    const hasConst = "const" in schemaWithoutDefs
+    const hasEnum = "enum" in schemaWithoutDefs
+    if (!hasType && !hasConst && !hasEnum) {
+        const formattedPath = formatPath(path)
+        logger.error(
+            'Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum"',
+            formattedPath
+        )
+        throw new Error(
+            `Unsupported schema: missing "type", "$ref", "anyOf", "const", or "enum" at ${formattedPath}`
+        )
     }
 
     return withClearedId(schemaWithoutDefs, {
