@@ -22,7 +22,8 @@ src/
   utils.ts          — pure helper functions
   index.ts          — moveDefsToRoot + ConvertToOpenAISchema + re-exports
   __tests__/
-    index.test.ts   — unchanged
+    index.test.ts                — unchanged
+    openai.integration.test.ts   — unchanged
 ```
 
 ## Module contents
@@ -33,12 +34,17 @@ Exports all types — both internal (`TObjectWithDefs`, `TAnyOf`) and public API
 (`TPromptSchema`, `TLogger`, `TConvertOptions`). Single source of truth for
 types so guards and utils import from one place.
 
+The anonymous intersection types used in guard return types (`TSchema & { allOf: ... }`,
+etc.) remain inline — they are tightly coupled to their guards and don't benefit
+from named aliases yet.
+
 ### `guards.ts`
 
 Exports all 8 type guards: `IsAnyOf`, `IsObject`, `IsDefsObject`, `IsArray`,
 `IsRef`, `IsAllOf`, `IsOneOf`, `IsNot`.
 
-Imports: types from `./types.js`.
+Each module imports its needed `typebox/type` types directly (e.g., `TSchema`,
+`TObject`, etc.) rather than re-exporting them through `types.ts`.
 
 ### `utils.ts`
 
@@ -55,8 +61,15 @@ Keeps `moveDefsToRoot` (core recursive transform) and `ConvertToOpenAISchema`
 
 Imports from `./types.js`, `./guards.js`, `./utils.js`.
 
-Re-exports public types (`TPromptSchema`, `TLogger`, `TConvertOptions`) so
-consumers' imports continue to work unchanged.
+`ConvertToOpenAISchema` is a direct export. Public types are re-exported using
+`export type { ... }` syntax (required by `verbatimModuleSyntax` in tsconfig):
+
+```typescript
+export type { TPromptSchema, TLogger, TConvertOptions } from "./types.js"
+```
+
+Internal types (`TObjectWithDefs`, `TAnyOf`) are NOT re-exported from `index.ts`
+to avoid widening the public API surface.
 
 ## Constraints
 
