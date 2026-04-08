@@ -1,9 +1,11 @@
 import type { TSchema } from "typebox/type"
 
+/** A JSON Schema object node that contains a `$defs` block. */
 export type TObjectWithDefs = TSchema & {
     $defs: Record<string, TSchema>
 }
 
+/** A schema node whose value is a union expressed via `anyOf`. */
 export type TAnyOf = {
     anyOf: TSchema[]
 }

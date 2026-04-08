@@ -19,7 +19,8 @@
         "lint": "pnpm run prettify:check && eslint .",
         "prettify": "prettier -w .",
         "prettify:check": "prettier --check .",
-        "build": "tsc",
+        "docs": "typedoc",
+        "build": "tsc && pnpm run docs",
         "check": "pnpm run lint && pnpm run test && pnpm run build",
         "prepare": "pnpm run build",
         "prepublishOnly": "pnpm run check"
@@ -49,6 +50,7 @@
         "eslint": "^9.39.2",
         "openai": "^4.104.0",
         "prettier": "^3.8.1",
+        "typedoc": "^0.28.18",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.53.1",
         "vitest": "^3.2.4"
