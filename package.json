@@ -1,5 +1,5 @@
 {
-    "name": "typebox-to-openai",
+    "name": "@proposit/typebox-to-openai",
     "version": "2.0.1",
     "description": "Convert Typebox schema to OpenAI API schema for structured output",
     "main": "dist/index.js",
@@ -37,11 +37,11 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/PolIntPro/typebox-to-openai.git"
+        "url": "https://github.com/Proposit-App/typebox-to-openai.git"
     },
-    "homepage": "https://github.com/PolIntPro/typebox-to-openai",
+    "homepage": "https://github.com/Proposit-App/typebox-to-openai",
     "bugs": {
-        "url": "https://github.com/PolIntPro/typebox-to-openai/issues"
+        "url": "https://github.com/Proposit-App/typebox-to-openai/issues"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",
