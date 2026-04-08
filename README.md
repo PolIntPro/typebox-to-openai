@@ -2,6 +2,8 @@
 
 Convert TypeBox schemas into OpenAI Structured Output schemas. The converter lifts `$defs` to the root, normalizes `$ref` paths, and keeps schemas compatible with the OpenAI API's JSON Schema expectations.
 
+[API Documentation](https://proposit-app.github.io/typebox-to-openai/)
+
 ## Install
 
 ```bash
